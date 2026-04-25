@@ -1,0 +1,61 @@
+{
+  "run_at": "2026-04-25T02:24:55.814Z",
+  "courses": [
+    {
+      "course": {
+        "code": "TEST101",
+        "title": "Introduction to Linear Algebra",
+        "slug": "01_linear_algebra"
+      },
+      "pipeline_status": "error",
+      "elapsed_seconds": 3138.6,
+      "lesson_count": 0,
+      "lessons_flagged": 0,
+      "lessons_needs_review": 0,
+      "lessons_passed": 0,
+      "lesson_summary": [],
+      "verdicts": [],
+      "course_spec": null
+    },
+    {
+      "course": {
+        "code": "TEST601",
+        "title": "Mechanism Design in Auction Theory",
+        "slug": "02_mechanism_design"
+      },
+      "pipeline_status": "error",
+      "elapsed_seconds": 583.4,
+      "lesson_count": 0,
+      "lessons_flagged": 0,
+      "lessons_needs_review": 0,
+      "lessons_passed": 0,
+      "lesson_summary": [],
+      "verdicts": [
+        {
+          "scope": "spec",
+          "rubric_set": "structural",
+          "verdict": "REVISE",
+          "attempt_num": 1,
+          "critique_count": 5
+        }
+      ],
+      "course_spec": null
+    },
+    {
+      "course": {
+        "code": "TEST401",
+        "title": "Computational Approaches to Ancient Language Decipherment",
+        "slug": "03_computational_decipherment"
+      },
+      "pipeline_status": "error",
+      "elapsed_seconds": 1070.9,
+      "lesson_count": 0,
+      "lessons_flagged": 0,
+      "lessons_needs_review": 0,
+      "lessons_passed": 0,
+      "lesson_summary": [],
+      "verdicts": [],
+      "course_spec": null
+    }
+  ]
+}

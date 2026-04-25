@@ -1,0 +1,24 @@
+{
+  "course": {
+    "code": "TEST101",
+    "title": "Introduction to Linear Algebra",
+    "slug": "01_linear_algebra"
+  },
+  "pipeline_status": "error",
+  "elapsed_seconds": 265.6,
+  "lesson_count": 0,
+  "lessons_flagged": 0,
+  "lessons_needs_review": 0,
+  "lessons_passed": 0,
+  "lesson_summary": [],
+  "verdicts": [
+    {
+      "scope": "spec",
+      "rubric_set": "structural",
+      "verdict": "REVISE",
+      "attempt_num": 1,
+      "critique_count": 6
+    }
+  ],
+  "course_spec": null
+}

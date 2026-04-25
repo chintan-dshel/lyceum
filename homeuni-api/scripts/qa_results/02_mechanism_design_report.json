@@ -1,0 +1,16 @@
+{
+  "course": {
+    "code": "TEST601",
+    "title": "Mechanism Design in Auction Theory",
+    "slug": "02_mechanism_design"
+  },
+  "pipeline_status": "error",
+  "elapsed_seconds": 0.1,
+  "lesson_count": 0,
+  "lessons_flagged": 0,
+  "lessons_needs_review": 0,
+  "lessons_passed": 0,
+  "lesson_summary": [],
+  "verdicts": [],
+  "course_spec": null
+}

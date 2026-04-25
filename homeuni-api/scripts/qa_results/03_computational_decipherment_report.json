@@ -1,0 +1,16 @@
+{
+  "course": {
+    "code": "TEST401",
+    "title": "Computational Approaches to Ancient Language Decipherment",
+    "slug": "03_computational_decipherment"
+  },
+  "pipeline_status": "error",
+  "elapsed_seconds": 1070.9,
+  "lesson_count": 0,
+  "lessons_flagged": 0,
+  "lessons_needs_review": 0,
+  "lessons_passed": 0,
+  "lesson_summary": [],
+  "verdicts": [],
+  "course_spec": null
+}
