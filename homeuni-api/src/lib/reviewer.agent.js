@@ -142,7 +142,7 @@ function validateVerdict(result) {
 }
 
 async function callReviewer(userContent, meta = {}) {
-  const callOpts = { model: MODELS.DEEP, system: REVIEWER_SYSTEM, maxTokens: 6000, meta: { ...meta, agent: 'reviewer' } };
+  const callOpts = { model: MODELS.FAST, system: REVIEWER_SYSTEM, maxTokens: 6000, meta: { ...meta, agent: 'reviewer' } };
   const { text } = await callClaude({ ...callOpts, messages: [{ role: 'user', content: userContent }] });
 
   let parsed;

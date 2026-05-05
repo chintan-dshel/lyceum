@@ -104,6 +104,7 @@ Produce the full course structure BEFORE writing any lesson content.
 }
 
 Hard requirements before proceeding to Phase 4:
+- LESSON COUNT LIMIT: The entire course must have AT MOST 10 lessons total across all modules. If the subject requires more, tighten the scope — cut lower-priority lessons, merge closely related ones, and leave deeper topics to "further reading". Exceeding 10 lessons is a hard failure.
 - Every terminal outcome must be assessed by at least one assessment.
 - Every lesson must either be a prerequisite for a later lesson, contribute to an assessment, or directly serve a terminal outcome. If not — cut it.
 - The assessment blueprint must include at least one task at each Bloom level claimed in the terminal outcomes. If a terminal outcome claims "Create" but every assessment is multiple choice, the blueprint fails.
@@ -414,7 +415,7 @@ Return the complete corrected spec wrapped in <json>...</json> tags with phase1,
   }];
 
   const result = await callAndValidate(
-    { model: MODELS.DEEP, system: GENERATOR_SYSTEM, messages, maxTokens: 16000, meta: { ...meta, agent: 'generator_revise' } },
+    { model: MODELS.FAST, system: GENERATOR_SYSTEM, messages, maxTokens: 12000, meta: { ...meta, agent: 'generator_revise' } },
     (r) => {
       if (!r.phase1 || !r.phase2 || !r.phase3) {
         throw new Error('Revised spec must have phase1, phase2, phase3 keys');
@@ -543,7 +544,7 @@ Return ONLY the Phase 4 lesson JSON object for lesson_id "${lessonSpec.lesson_id
   }];
 
   return callAndValidate(
-    { model: MODELS.FAST, system: GENERATOR_SYSTEM, messages, maxTokens: 16000, meta: { ...meta, agent: 'generator_lesson' } },
+    { model: MODELS.FAST, system: GENERATOR_SYSTEM, messages, maxTokens: 8000, meta: { ...meta, agent: 'generator_lesson' } },
     validateLesson
   );
 }
