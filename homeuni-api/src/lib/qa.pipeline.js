@@ -18,6 +18,7 @@ import { inferLearnerProfile } from './clarifier.agent.js';
 import {
   runPhases123, reviseSpec, writeAllLessons, rewriteLesson,
   extractStubsFromSpec, mapLessonToContent, buildLessonSpecIndex,
+  runWithConcurrency,
 } from './course.generator.js';
 import { reviewSpec, reviewLessons } from './reviewer.agent.js';
 import { writeLessonStubsToDB } from './curriculum.agent.js';
@@ -237,56 +238,60 @@ async function applyRevision(courseSpec, verdict, course, programContext, learne
 }
 
 async function reviewAndRetryAllLessons(lessons, courseSpec, course, programId, meta = {}) {
-  const results = [];
+  const tasks = lessons.map(lesson => async () => {
+    try {
+      const verdict = await reviewLessons([lesson], courseSpec, meta);
+      await persistVerdict({
+        programId, courseId: course.id,
+        scope: 'lesson', rubricSet: 'content', verdict, attemptNum: 1,
+      });
 
-  for (const lesson of lessons) {
-    const verdict = await reviewLessons([lesson], courseSpec, meta);
-    await persistVerdict({
-      programId, courseId: course.id,
-      scope: 'lesson', rubricSet: 'content', verdict, attemptNum: 1,
-    });
-
-    if (verdict.overall_verdict === 'PASS') {
-      lesson._qaStatus = 'passed';
-      results.push(lesson);
-      continue;
-    }
-
-    let current = lesson;
-    let passed = false;
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      console.log(`[QA] Rewriting lesson ${current.lesson_id} (attempt ${attempt}/2)`);
-      try {
-        const rewritten = await rewriteLesson(current, verdict, courseSpec, course, meta);
-        rewritten._regenCount = attempt;
-
-        const retryVerdict = await reviewLessons([rewritten], courseSpec, meta);
-        await persistVerdict({
-          programId, courseId: course.id,
-          scope: 'lesson', rubricSet: 'content', verdict: retryVerdict, attemptNum: attempt + 1,
-        });
-
-        if (retryVerdict.overall_verdict === 'PASS') {
-          rewritten._qaStatus = 'passed';
-          results.push(rewritten);
-          passed = true;
-          break;
-        }
-        current = rewritten;
-      } catch (err) {
-        console.error(`[QA] Lesson ${lesson.lesson_id} retry ${attempt} failed:`, err.message);
+      if (verdict.overall_verdict === 'PASS') {
+        lesson._qaStatus = 'passed';
+        return lesson;
       }
-    }
 
-    if (!passed) {
-      console.warn(`[QA] Lesson ${lesson.lesson_id} exceeded retry cap — flagging for human review`);
-      current._qaStatus = 'flagged';
-      current._regenCount = 2;
-      results.push(current);
-    }
-  }
+      let current = lesson;
+      let passed = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        console.log(`[QA] Rewriting lesson ${current.lesson_id} (attempt ${attempt}/2)`);
+        try {
+          const rewritten = await rewriteLesson(current, verdict, courseSpec, course, meta);
+          rewritten._regenCount = attempt;
 
-  return results;
+          const retryVerdict = await reviewLessons([rewritten], courseSpec, meta);
+          await persistVerdict({
+            programId, courseId: course.id,
+            scope: 'lesson', rubricSet: 'content', verdict: retryVerdict, attemptNum: attempt + 1,
+          });
+
+          if (retryVerdict.overall_verdict === 'PASS') {
+            rewritten._qaStatus = 'passed';
+            current = rewritten;
+            passed = true;
+            break;
+          }
+          current = rewritten;
+        } catch (err) {
+          console.error(`[QA] Lesson ${lesson.lesson_id} retry ${attempt} failed:`, err.message);
+        }
+      }
+
+      if (!passed) {
+        console.warn(`[QA] Lesson ${lesson.lesson_id} exceeded retry cap — flagging for human review`);
+        current._qaStatus = 'flagged';
+        current._regenCount = current._regenCount || 2;
+      }
+      return current;
+    } catch (err) {
+      console.error(`[QA] Review+retry for ${lesson.lesson_id} failed: ${err.message}`);
+      lesson._qaStatus = 'flagged';
+      return lesson;
+    }
+  });
+
+  const settled = await runWithConcurrency(tasks, 3);
+  return settled.map((r, i) => (r?.error ? { ...lessons[i], _qaStatus: 'flagged' } : r));
 }
 
 async function persistAllLessons(courseId, lessons, courseSpec) {

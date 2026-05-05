@@ -596,7 +596,7 @@ export async function rewriteLesson(lesson, verdict, courseSpec, course, meta = 
 
 // ── Concurrency limiter ─────────────────────────────────────────────────────
 
-async function runWithConcurrency(tasks, limit) {
+export async function runWithConcurrency(tasks, limit) {
   const results = new Array(tasks.length);
   let index = 0;
 
