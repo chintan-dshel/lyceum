@@ -56,7 +56,7 @@ function Whiteboard({ lesson }) {
 
   return (
     <div style={{
-      position: 'relative', flex: 1, borderRadius: 14,
+      position: 'relative', flex: 1, minHeight: 0, borderRadius: 14,
       background: 'var(--board-dark)',
       backgroundImage: `
         radial-gradient(ellipse 80% 60% at 50% 30%, oklch(32% 0.02 180) 0%, transparent 60%),
@@ -118,16 +118,11 @@ function WhiteboardContent({ sections }) {
               {sec.heading.toUpperCase()}
             </div>
           )}
-          {sec.content && (
-            <div style={{ fontFamily: 'var(--f-hand)', fontSize: 20, lineHeight: 1.7, color: 'var(--board-chalk)', transform: `rotate(${(i % 2 === 0 ? -0.3 : 0.2)}deg)` }}>
-              {sec.content}
+          {(sec.body || sec.content) && (
+            <div style={{ fontFamily: 'var(--f-hand)', fontSize: 20, lineHeight: 1.7, color: 'var(--board-chalk)', transform: `rotate(${(i % 2 === 0 ? -0.3 : 0.2)}deg)`, whiteSpace: 'pre-line' }}>
+              {sec.body || sec.content}
             </div>
           )}
-          {sec.equations?.map((eq, j) => (
-            <div key={j} style={{ fontFamily: 'var(--f-serif)', fontStyle: 'italic', fontSize: 24, color: 'var(--board-chalk)', margin: '8px 0' }}>
-              {eq}
-            </div>
-          ))}
         </div>
       ))}
     </div>
@@ -355,12 +350,13 @@ export default function LessonView() {
     setStreaming(true);
     setStreamingText('');
 
+    let accumulated = '';
     controllerRef.current = streamProfessorChat(
       lessonId,
       text,
-      (chunk) => setStreamingText(t => t + chunk),
-      (full) => {
-        setMessages(m => [...m, { role: 'assistant', content: full }]);
+      (chunk) => { accumulated += chunk; setStreamingText(accumulated); },
+      () => {
+        setMessages(m => [...m, { role: 'assistant', content: accumulated }]);
         setStreamingText('');
         setStreaming(false);
       }
@@ -412,7 +408,7 @@ export default function LessonView() {
 
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', minHeight: 0 }}>
           {/* Board + controls */}
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
             {/* Tab bar */}
             <div style={{ display: 'flex', gap: 2, padding: '12px 22px 0', borderBottom: '1px solid var(--rule)' }}>
               {[{ id: 'lecture', label: 'Lecture' }, { id: 'practice', label: 'Practice' }].map(t => (
@@ -431,7 +427,7 @@ export default function LessonView() {
             </div>
 
             {activeTab === 'lecture' ? (
-              <div style={{ padding: '18px 22px 0', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '18px 22px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <Whiteboard lesson={lesson} />
                 <LectureControls
                   playing={playing} setPlaying={setPlaying}
