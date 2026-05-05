@@ -714,21 +714,25 @@ function contentToString(val) {
 function formatExample(ex) {
   if (typeof ex === 'string') return ex;
   const parts = [];
-  // Rich schema: { title, scenario, walkthrough, key_takeaway }
+  // Worked example schema: { title, scenario, walkthrough, key_takeaway }
   if (ex.title) parts.push(ex.title);
   if (ex.scenario) parts.push(`Scenario:\n${ex.scenario}`);
   if (ex.walkthrough && typeof ex.walkthrough === 'object') {
     const steps = Object.entries(ex.walkthrough)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, v]) => (typeof v === 'string' ? v : JSON.stringify(v)));
+      .map(([, v]) => (typeof v === 'string' ? v : contentToString(v)));
     if (steps.length) parts.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n\n'));
   }
   if (ex.key_takeaway) parts.push(`Key takeaway: ${ex.key_takeaway}`);
+  // Practice problem schema: { prompt/task, worked_solution }
+  if (ex.prompt || ex.task) parts.push(ex.prompt || ex.task);
+  if (ex.worked_solution) parts.push(`Solution:\n${contentToString(ex.worked_solution)}`);
   // Legacy schema: { problem/question, solution/answer, steps }
-  if (ex.problem || ex.question) parts.push(`Problem: ${ex.problem || ex.question}`);
-  if (ex.solution || ex.answer) parts.push(`Solution: ${ex.solution || ex.answer}`);
+  if (ex.problem || ex.question) parts.push(ex.problem || ex.question);
+  if (ex.solution || ex.answer) parts.push(`Solution:\n${contentToString(ex.solution || ex.answer)}`);
   if (ex.steps) parts.push(Array.isArray(ex.steps) ? ex.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') : ex.steps);
-  return parts.join('\n\n') || Object.entries(ex).filter(([, v]) => v && typeof v === 'string').map(([k, v]) => `${toTitle(k)}: ${v}`).join('\n\n');
+  // Generic fallback — flatten all string fields
+  return parts.join('\n\n') || contentToString(ex);
 }
 
 function formatMisconception(m) {
