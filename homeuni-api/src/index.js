@@ -51,22 +51,6 @@ app.get('/api/certificates/:code', async (req, res) => {
   }
 });
 
-// Quick Anthropic connectivity test — visit /api/test-ai in browser
-app.get('/api/test-ai', async (_req, res) => {
-  try {
-    const { callClaude, MODELS } = await import('./lib/anthropic.js');
-    const { text } = await callClaude({
-      model: MODELS.FAST,
-      system: 'You are a test assistant.',
-      messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
-      maxTokens: 10,
-    });
-    res.json({ status: 'ok', response: text });
-  } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
-  }
-});
-
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/programs', programRoutes);
