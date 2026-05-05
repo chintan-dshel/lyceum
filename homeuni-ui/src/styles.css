@@ -100,6 +100,31 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .pill.clay   { background: var(--clay-soft);   color: oklch(46% 0.12 50); border-color: transparent; }
 .pill.rose   { background: var(--rose-soft);   color: var(--rose);   border-color: transparent; }
 
+/* ── Advisor Nudge ───────────────────────────────────────── */
+.nudge-banner {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; margin-bottom: 20px;
+  background: var(--amber-soft);
+  border: 1px solid oklch(88% 0.07 75);
+  border-left: 3px solid var(--amber);
+  border-radius: 10px;
+}
+.nudge-icon {
+  font-size: 14px; color: oklch(52% 0.14 75);
+  flex-shrink: 0; margin-top: 2px; line-height: 1;
+}
+.nudge-text {
+  flex: 1; min-width: 0;
+  font-size: 13.5px; line-height: 1.6; color: var(--ink-2);
+}
+.nudge-dismiss {
+  flex-shrink: 0; background: transparent; border: none;
+  cursor: pointer; font-size: 13px; color: oklch(52% 0.1 75);
+  padding: 2px 4px; border-radius: 4px; line-height: 1;
+  transition: background .1s;
+}
+.nudge-dismiss:hover { background: oklch(88% 0.07 75); }
+
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
