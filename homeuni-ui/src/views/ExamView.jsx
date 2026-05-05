@@ -111,6 +111,8 @@ export default function ExamView() {
               )}
               {(q.type === 'short_answer' || q.type === 'essay') && (
                 <textarea
+                  id="exam-answer"
+                  name="exam-answer"
                   className="form-input"
                   value={answers[q.id] || ''}
                   onChange={e => setAnswer(q.id, e.target.value)}

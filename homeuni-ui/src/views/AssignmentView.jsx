@@ -77,6 +77,8 @@ export default function AssignmentView() {
                   Submit as many times as you like — each submission gets fresh feedback.
                 </div>
                 <textarea
+                  id="answer"
+                  name="answer"
                   value={text}
                   onChange={e => setText(e.target.value)}
                   placeholder="Write your response here…"

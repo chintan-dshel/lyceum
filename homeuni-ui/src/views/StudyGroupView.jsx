@@ -176,6 +176,8 @@ export default function StudyGroupView() {
               <div>
                 <div className="kicker" style={{ marginBottom: 6 }}>What are you studying today?</div>
                 <input
+                  id="study-topic"
+                  name="study-topic"
                   type="text"
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
@@ -195,6 +197,8 @@ export default function StudyGroupView() {
                 {goals.map((g, i) => (
                   <input
                     key={i}
+                    id={`session-goal-${i + 1}`}
+                    name={`session-goal-${i + 1}`}
                     type="text"
                     value={g}
                     onChange={e => setGoals(prev => prev.map((v, j) => j === i ? e.target.value : v))}
@@ -273,6 +277,8 @@ export default function StudyGroupView() {
             }}>
               <div className="kicker" style={{ marginBottom: 6 }}>Shared scratchpad</div>
               <textarea
+                id="scratchpad"
+                name="scratchpad"
                 value={scratchpad}
                 onChange={e => setScratchpad(e.target.value)}
                 placeholder="Jot down equations, diagrams, ideas…"
@@ -309,6 +315,8 @@ export default function StudyGroupView() {
             {/* Input */}
             <div style={{ padding: '12px 20px', borderTop: '1px solid var(--rule)', display: 'flex', gap: 10 }}>
               <input
+                id="group-chat"
+                name="group-chat"
                 type="text"
                 value={input}
                 onChange={e => setInput(e.target.value)}

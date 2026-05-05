@@ -356,6 +356,8 @@ function PracticePanel({ lessonId }) {
             </div>
           )}
           <textarea
+            id="lesson-answer"
+            name="lesson-answer"
             value={answer} onChange={e => setAnswer(e.target.value)}
             placeholder="Type your answer here…" rows={5}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--rule)', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical', outline: 'none', background: '#fff', color: 'var(--ink)', boxSizing: 'border-box' }}
@@ -518,6 +520,8 @@ export default function LessonView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid var(--rule)', borderRadius: 10, padding: '8px 10px' }}>
                 <Icon name="chat" size={15} style={{ color: 'var(--ink-3)' }} />
                 <input
+                  id="lesson-professor-chat"
+                  name="lesson-professor-chat"
                   ref={inputRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}

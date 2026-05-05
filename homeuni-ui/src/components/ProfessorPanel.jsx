@@ -174,6 +174,8 @@ export default function ProfessorPanel({ lessonId, lessonTitle }) {
           </button>
         )}
         <textarea
+          id="professor-chat"
+          name="professor-chat"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

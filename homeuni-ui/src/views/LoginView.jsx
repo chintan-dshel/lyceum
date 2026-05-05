@@ -65,6 +65,8 @@ export default function LoginView() {
           <div>
             <div className="kicker" style={{ marginBottom: 6 }}>Email</div>
             <input
+              id="email"
+              name="email"
               type="email"
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
@@ -76,6 +78,8 @@ export default function LoginView() {
           <div>
             <div className="kicker" style={{ marginBottom: 6 }}>Password</div>
             <input
+              id="password"
+              name="password"
               type="password"
               value={form.password}
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}

@@ -224,6 +224,8 @@ export default function OnboardingView() {
             }}>
               <Icon name="sparkle" size={15} style={{ color: 'var(--indigo)', flexShrink: 0 }} />
               <textarea
+                id="onboarding-chat"
+                name="onboarding-chat"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
