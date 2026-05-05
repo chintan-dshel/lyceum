@@ -527,7 +527,7 @@ Return ONLY the Phase 4 lesson JSON object for lesson_id "${lessonSpec.lesson_id
   }];
 
   return callAndValidate(
-    { model: MODELS.FAST, system: GENERATOR_SYSTEM, messages, maxTokens: 12000, meta: { ...meta, agent: 'generator_lesson' } },
+    { model: MODELS.FAST, system: GENERATOR_SYSTEM, messages, maxTokens: 16000, meta: { ...meta, agent: 'generator_lesson' } },
     validateLesson
   );
 }
