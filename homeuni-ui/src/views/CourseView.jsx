@@ -67,6 +67,7 @@ export default function CourseView() {
       <div className="main-content">
         <TopBar
           crumb={`${course.code} · SEMESTER ${course.semester_number}`}
+          crumbHref={`/program/${programId}/semester/${course.semester_number}`}
           title={course.title}
           actions={
             lessonList.length > 0 && (

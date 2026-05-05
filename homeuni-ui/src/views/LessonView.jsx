@@ -474,6 +474,7 @@ export default function LessonView() {
       <div className="main-content">
         <TopBar
           crumb={`${lesson.course_code || 'COURSE'} · LECTURE ${lesson.number}`}
+          crumbHref={`/program/${programId}/course/${lesson.course_id}`}
           title={lesson.title}
           actions={
             <span className="pill sage" style={{ gap: 5 }}>

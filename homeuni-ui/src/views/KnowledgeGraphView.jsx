@@ -179,6 +179,7 @@ export default function KnowledgeGraphView() {
       <div className="main-content" style={{ overflow: 'hidden' }}>
         <TopBar
           crumb="CURRICULUM"
+          crumbHref="/dashboard"
           title="Knowledge Map"
           actions={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--ink-3)' }}>

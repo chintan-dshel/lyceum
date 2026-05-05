@@ -28,6 +28,7 @@ export default function SemesterView() {
       <div className="main-content">
         <TopBar
           crumb="Curriculum"
+          crumbHref="/dashboard"
           title={semester.title}
           actions={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

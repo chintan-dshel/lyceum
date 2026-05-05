@@ -250,6 +250,7 @@ export default function FlashcardView() {
       <div className="main-content">
         <TopBar
           crumb="STUDY TOOLS"
+          crumbHref="/dashboard"
           title="Flashcards"
           actions={
             phase === 'review' && (

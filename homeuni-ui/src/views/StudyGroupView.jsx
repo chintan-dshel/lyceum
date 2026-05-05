@@ -170,7 +170,7 @@ export default function StudyGroupView() {
       <div className="app-shell">
         <Sidebar programId={programId} active="study" />
         <div className="main-content">
-          <TopBar crumb="STUDY GROUP" title="Start a session" />
+          <TopBar crumb="STUDY GROUP" crumbHref="/dashboard" title="Start a session" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
             <div className="card" style={{ padding: 36, width: 460, display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
@@ -249,6 +249,7 @@ export default function StudyGroupView() {
       <div className="main-content">
         <TopBar
           crumb="STUDY GROUP"
+          crumbHref="/dashboard"
           title={topic}
           actions={
             <button className="btn" onClick={handleLeave} style={{ color: 'var(--rose)' }}>

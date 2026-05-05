@@ -36,6 +36,7 @@ export default function TranscriptView() {
       <div className="main-content">
         <TopBar
           crumb="ACADEMIC RECORD"
+          crumbHref="/dashboard"
           title="Your transcript"
           actions={<button className="btn"><Icon name="upload" size={13} /> Download PDF</button>}
         />

@@ -41,6 +41,7 @@ export default function AssignmentView() {
       <div className="main-content">
         <TopBar
           crumb={`ASSIGNMENT · ${assignment.assignment_type?.toUpperCase()}`}
+          crumbHref={`/program/${programId}/course/${assignment.course_id}`}
           title={assignment.title}
           actions={<button className="btn"><Icon name="upload" size={13} /> Export</button>}
         />
