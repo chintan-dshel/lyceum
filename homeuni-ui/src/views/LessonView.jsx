@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 
 function formatExampleObject(ex) {
   const parts = [];
+  // Worked example schema: { title, scenario, walkthrough, key_takeaway }
   if (ex.title) parts.push(ex.title);
   if (ex.scenario) parts.push(`Scenario:\n${ex.scenario}`);
   if (ex.walkthrough && typeof ex.walkthrough === 'object') {
@@ -21,8 +22,12 @@ function formatExampleObject(ex) {
     if (steps.length) parts.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n\n'));
   }
   if (ex.key_takeaway) parts.push(`Key takeaway: ${ex.key_takeaway}`);
-  if (ex.problem || ex.question) parts.push(`Problem: ${ex.problem || ex.question}`);
-  if (ex.solution || ex.answer) parts.push(`Solution: ${ex.solution || ex.answer}`);
+  // Practice problem schema: { prompt/task, worked_solution }
+  if (ex.prompt || ex.task) parts.push(ex.prompt || ex.task);
+  if (ex.worked_solution) parts.push(`Solution:\n${bodyToString(ex.worked_solution)}`);
+  // Legacy schema: { problem/question, solution/answer, steps }
+  if (ex.problem || ex.question) parts.push(ex.problem || ex.question);
+  if (ex.solution || ex.answer) parts.push(`Solution:\n${bodyToString(ex.solution || ex.answer)}`);
   if (ex.steps) parts.push(Array.isArray(ex.steps) ? ex.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') : ex.steps);
   return parts.join('\n\n');
 }
