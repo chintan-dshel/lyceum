@@ -15,13 +15,16 @@ import { query } from '../db/pool.js';
 import { runAdvisorTurn, PROGRAM_STAGES } from '../lib/agents.js';
 import { extractProgramBrief } from '../lib/advisor.agent.js';
 import { curriculumQueue } from '../jobs/queue.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { injectionDetection } from '../middleware/injectionDetection.js';
+import { piiAudit } from '../middleware/piiAudit.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // ── Advisor Chat ─────────────────────────────────────────────────────────────
 
-router.post('/advisor/chat', asyncHandler(async (req, res) => {
+router.post('/advisor/chat', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { message, programId } = req.body;
   if (!message) return res.status(400).json({ error: 'message is required' });
 

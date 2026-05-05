@@ -13,6 +13,9 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runAssessment } from '../lib/agents.js';
 import { signalAssignmentLowScore } from '../lib/difficulty.service.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { injectionDetection } from '../middleware/injectionDetection.js';
+import { piiAudit } from '../middleware/piiAudit.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -54,7 +57,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json({ assignment });
 }));
 
-router.post('/:id/submit', asyncHandler(async (req, res) => {
+router.post('/:id/submit', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { content_text } = req.body;
   if (!content_text?.trim()) {
     return res.status(400).json({ error: 'Submission content is required' });

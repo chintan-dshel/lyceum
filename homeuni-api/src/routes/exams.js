@@ -14,6 +14,9 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runExamGrading } from '../lib/agents.js';
 import { signalExamLowScore } from '../lib/difficulty.service.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { injectionDetection } from '../middleware/injectionDetection.js';
+import { piiAudit } from '../middleware/piiAudit.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -87,7 +90,7 @@ router.post('/:id/attempt', asyncHandler(async (req, res) => {
   res.status(201).json({ attempt });
 }));
 
-router.post('/:id/submit', asyncHandler(async (req, res) => {
+router.post('/:id/submit', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { attemptId, answers } = req.body;
   if (!attemptId || !answers) {
     return res.status(400).json({ error: 'attemptId and answers are required' });

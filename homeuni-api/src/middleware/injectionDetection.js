@@ -29,7 +29,20 @@ function hashIP(req) {
 
 function extractText(body) {
   if (!body || typeof body !== 'object') return null;
-  return body.message || body.content || body.text || null;
+
+  // Scalar text fields used across all LLM-facing routes
+  const scalar = body.message || body.content || body.text
+    || body.answer || body.content_text || null;
+
+  // answers: exam submissions send { questionId: studentAnswerString, ... }
+  let fromAnswers = null;
+  if (body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers)) {
+    const parts = Object.values(body.answers).filter(v => typeof v === 'string');
+    if (parts.length > 0) fromAnswers = parts.join(' ');
+  }
+
+  if (scalar && fromAnswers) return `${scalar} ${fromAnswers}`;
+  return scalar || fromAnswers;
 }
 
 function writeSecurityEvent(userId, eventType, detail, ipHash) {
