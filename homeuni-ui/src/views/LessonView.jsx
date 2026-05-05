@@ -10,9 +10,23 @@ import { useAuth } from '../hooks/useAuth.jsx';
 
 // ─── Lesson article ───────────────────────────────────────
 
+function bodyToString(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return val.map(bodyToString).join('\n\n');
+  if (typeof val === 'object') {
+    // flatten object values as labelled prose
+    return Object.entries(val)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${bodyToString(v)}`)
+      .join('\n\n');
+  }
+  return String(val);
+}
+
 function ArticleSection({ sec }) {
   const type = sec.type || 'text';
-  const body = sec.body || sec.content || '';
+  const body = bodyToString(sec.body ?? sec.content);
 
   if (type === 'example') {
     return (
@@ -82,7 +96,7 @@ function KeyTerms({ terms }) {
         {terms.map((t, i) => (
           <div key={i} style={{ padding: '12px 14px', background: 'var(--paper-2)', borderRadius: 8, border: '1px solid var(--rule)' }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>{t.term}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>{t.definition}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>{bodyToString(t.definition)}</div>
           </div>
         ))}
       </div>
@@ -90,8 +104,15 @@ function KeyTerms({ terms }) {
   );
 }
 
+function parseLessonContent(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return {}; } }
+  return raw;
+}
+
 function LessonArticle({ lesson, onAskProf }) {
-  const hasContent = lesson.content?.sections?.length > 0;
+  const content = parseLessonContent(lesson.content);
+  const hasContent = content?.sections?.length > 0;
   const [ctxMenu, setCtxMenu] = useState(null); // { x, y, text }
 
   const handleContextMenu = useCallback((e) => {
@@ -160,14 +181,14 @@ function LessonArticle({ lesson, onAskProf }) {
 
           {/* Sections */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-            {lesson.content.sections.map((sec, i) => (
+            {content.sections.map((sec, i) => (
               <ArticleSection key={i} sec={sec} />
             ))}
           </div>
 
           {/* Key terms */}
-          {lesson.content.key_terms?.length > 0 && (
-            <KeyTerms terms={lesson.content.key_terms} />
+          {content.key_terms?.length > 0 && (
+            <KeyTerms terms={content.key_terms} />
           )}
         </div>
       ) : (
