@@ -8,51 +8,18 @@ import Icon from '../components/ui/Icon.jsx';
 import Avatar from '../components/ui/Avatar.jsx';
 import { useAuth } from '../hooks/useAuth.jsx';
 
-// ─── Professor voice orb ──────────────────────────────────
-function ProfOrb({ wave, playing, size = 68 }) {
-  return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <div style={{
-        position: 'absolute', inset: -6, borderRadius: size,
-        background: 'conic-gradient(from 0deg, var(--indigo) 0deg, var(--clay) 120deg, var(--indigo) 240deg, var(--indigo) 360deg)',
-        opacity: playing ? 0.3 : 0.15,
-        animation: playing ? 'spin 8s linear infinite' : 'none',
-        filter: 'blur(8px)',
-      }} />
-      <div style={{
-        position: 'absolute', inset: 0, borderRadius: size,
-        background: 'radial-gradient(circle at 35% 35%, oklch(80% 0.08 265), var(--indigo))',
-        boxShadow: '0 4px 16px oklch(52% 0.13 265 / 0.3), inset 0 -4px 12px oklch(40% 0.12 265)',
-      }} />
-      <div style={{
-        position: 'absolute', top: '20%', left: '26%',
-        width: '30%', height: '18%', borderRadius: '50%',
-        background: 'oklch(94% 0.03 265 / 0.7)', filter: 'blur(2px)',
-      }} />
-      {/* Waveform overlay when playing */}
-      {wave && (
-        <div style={{
-          position: 'absolute', inset: 0, borderRadius: size,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5,
-          overflow: 'hidden',
-        }}>
-          {wave.slice(0, 12).map((v, i) => (
-            <div key={i} style={{
-              width: 2, borderRadius: 2,
-              height: `${Math.max(playing ? 8 : 3, v * 26)}px`,
-              background: 'rgba(255,255,255,0.5)',
-              transition: 'height .08s ease-out',
-            }} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Whiteboard component ─────────────────────────────────
+const BOARD_FONTS = {
+  hand:  'var(--f-hand)',
+  serif: 'Georgia, "Times New Roman", serif',
+  sans:  'system-ui, -apple-system, sans-serif',
+};
+const BOARD_SIZES = { sm: 15, md: 20, lg: 26 };
+
 function Whiteboard({ lesson }) {
   const hasContent = lesson.content?.sections?.length > 0;
+  const [font, setFont] = useState('hand');
+  const [size, setSize] = useState('md');
 
   return (
     <div style={{
@@ -77,12 +44,36 @@ function Whiteboard({ lesson }) {
       </svg>
 
       {/* Header */}
-      <div style={{ position: 'relative', padding: '18px 24px 0', display: 'flex', alignItems: 'baseline', gap: 14 }}>
+      <div style={{ position: 'relative', padding: '18px 24px 0', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'var(--f-hand)', fontSize: 26, color: 'var(--board-chalk)', transform: 'rotate(-0.5deg)' }}>
           {lesson.title}
         </div>
         <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--board-chalk-2)', opacity: 0.6, letterSpacing: '0.1em' }}>
           LECTURE {lesson.number}
+        </div>
+        {/* Font + size controls */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {[['hand', 'var(--f-hand)', 'Hnd'], ['serif', 'Georgia,serif', 'Serif'], ['sans', 'system-ui', 'Sans']].map(([key, f, label]) => (
+              <button key={key} onClick={() => setFont(key)} style={{
+                fontFamily: f, fontSize: 11, padding: '3px 8px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                background: font === key ? 'oklch(65% 0.03 75 / 0.35)' : 'transparent',
+                color: font === key ? 'var(--board-chalk)' : 'var(--board-chalk-2)',
+                opacity: font === key ? 1 : 0.55,
+              }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ width: 1, height: 14, background: 'oklch(65% 0.03 75 / 0.3)' }} />
+          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+            {[['sm', 11], ['md', 14], ['lg', 18]].map(([key, labelPx]) => (
+              <button key={key} onClick={() => setSize(key)} style={{
+                fontSize: labelPx, fontFamily: BOARD_FONTS[font], padding: '0 6px', borderRadius: 5, border: 'none', cursor: 'pointer', lineHeight: '22px',
+                background: size === key ? 'oklch(65% 0.03 75 / 0.35)' : 'transparent',
+                color: size === key ? 'var(--board-chalk)' : 'var(--board-chalk-2)',
+                opacity: size === key ? 1 : 0.55,
+              }}>A</button>
+            ))}
+          </div>
         </div>
       </div>
       <div style={{ margin: '10px 24px 0', height: 1, background: 'oklch(65% 0.03 75)', opacity: 0.25 }} />
@@ -90,7 +81,7 @@ function Whiteboard({ lesson }) {
       {/* Content */}
       <div style={{ padding: '16px 24px 24px', position: 'relative' }}>
         {hasContent ? (
-          <WhiteboardContent sections={lesson.content.sections} />
+          <WhiteboardContent sections={lesson.content.sections} font={BOARD_FONTS[font]} size={BOARD_SIZES[size]} />
         ) : (
           <div style={{ fontFamily: 'var(--f-hand)', fontSize: 20, color: 'var(--board-chalk-2)', opacity: 0.7, marginTop: 24 }}>
             Lecture content is being prepared…
@@ -108,7 +99,7 @@ function Whiteboard({ lesson }) {
   );
 }
 
-function WhiteboardContent({ sections }) {
+function WhiteboardContent({ sections, font = 'var(--f-hand)', size = 20 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {sections.map((sec, i) => (
@@ -119,7 +110,7 @@ function WhiteboardContent({ sections }) {
             </div>
           )}
           {(sec.body || sec.content) && (
-            <div style={{ fontFamily: 'var(--f-hand)', fontSize: 20, lineHeight: 1.7, color: 'var(--board-chalk)', transform: `rotate(${(i % 2 === 0 ? -0.3 : 0.2)}deg)`, whiteSpace: 'pre-line' }}>
+            <div style={{ fontFamily: font, fontSize: size, lineHeight: 1.75, color: 'var(--board-chalk)', whiteSpace: 'pre-line' }}>
               {sec.body || sec.content}
             </div>
           )}
@@ -311,13 +302,12 @@ export default function LessonView() {
   const initials = user?.full_name?.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
   const [activeTab, setActiveTab] = useState('lecture');
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
-  const [wave, setWave] = useState(Array.from({ length: 40 }, () => 0.3));
   const scrollRef = useRef(null);
   const controllerRef = useRef(null);
 
@@ -328,15 +318,6 @@ export default function LessonView() {
       .then(({ messages: hist }) => setMessages(hist || []))
       .catch(() => {});
   }, [lessonId]);
-
-  // Animate waveform
-  useEffect(() => {
-    if (!playing) return;
-    const id = setInterval(() => {
-      setWave(w => w.map((_, i) => 0.2 + Math.abs(Math.sin(Date.now() / 180 + i * 0.5)) * 0.8 * (Math.random() * 0.5 + 0.5)));
-    }, 80);
-    return () => clearInterval(id);
-  }, [playing]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -446,22 +427,11 @@ export default function LessonView() {
           {/* Right rail */}
           <div style={{ borderLeft: '1px solid var(--rule)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Professor panel */}
-            <div style={{ padding: '22px 18px 16px', borderBottom: '1px solid var(--rule)', display: 'flex', gap: 16, alignItems: 'center' }}>
-              <ProfOrb wave={wave} playing={playing} size={68} />
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--rule)', display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 18, flexShrink: 0, background: 'radial-gradient(circle at 35% 35%, oklch(80% 0.08 265), var(--indigo))' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Prof. AI <span style={{ fontWeight: 400, color: 'var(--ink-3)' }}>· Socratic</span></div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 8 }}>{lesson.course_title}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 22 }}>
-                  {wave.map((v, i) => (
-                    <div key={i} style={{
-                      width: 2.5, borderRadius: 2,
-                      height: `${Math.max(playing ? 14 : 4, v * 22)}px`,
-                      background: i < wave.length / 2 ? 'var(--indigo)' : 'var(--clay)',
-                      opacity: playing ? 0.85 : 0.35,
-                      transition: 'height .08s ease-out',
-                    }} />
-                  ))}
-                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{lesson.course_title}</div>
               </div>
             </div>
 

@@ -6,6 +6,12 @@
 import { processCurriculumJob } from './curriculum.job.js';
 import { startStreakJob } from './streak.job.js';
 import { generateNextLesson } from '../lib/qa.pipeline.js';
+import {
+  generateCourseAssignments,
+  generateCourseExams,
+  writeAssignmentsToDB,
+  writeExamsToDB,
+} from '../lib/curriculum.agent.js';
 
 // Minimal job object that matches the BullMQ interface the job file expects
 function makeJob(data) {
@@ -107,7 +113,46 @@ export function startWorkers() {
         }
       }
 
-      // 3. Programs flagged as needs_review — surface count for ops awareness
+      // 4. Courses with lessons generated but no assignments/exams yet
+      //    (pipeline was killed between lesson-1 write and assignments generation)
+      const { rows: needsAssignments } = await query(
+        `SELECT c.id, c.code, c.title, c.description, c.learning_objectives, c.degree_type
+         FROM courses c
+         WHERE c.generation_phase IS NULL
+           AND c.qa_status IS DISTINCT FROM 'error'
+           AND EXISTS (
+             SELECT 1 FROM lessons l WHERE l.course_id = c.id
+               AND l.content IS NOT NULL
+               AND l.content::text NOT IN ('{}', '"{}"')
+           )
+           AND NOT EXISTS (SELECT 1 FROM assignments WHERE course_id = c.id)
+         LIMIT 5`
+      );
+      if (needsAssignments.length > 0) {
+        console.log(`[Queue] Found ${needsAssignments.length} course(s) missing assignments/exams — generating`);
+        for (const c of needsAssignments) {
+          const { rows: stubs } = await query(
+            'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
+            [c.id]
+          );
+          if (!stubs.length) continue;
+          setImmediate(async () => {
+            try {
+              const [assignments, exams] = await Promise.all([
+                generateCourseAssignments(c, stubs),
+                generateCourseExams(c, stubs),
+              ]);
+              await writeAssignmentsToDB({ courseId: c.id, assignments });
+              await writeExamsToDB({ courseId: c.id, exams });
+              console.log(`[Queue] ✓ ${c.code} assignments + exams ready`);
+            } catch (err) {
+              console.error(`[Queue] ✗ ${c.code} assignments/exams failed:`, err.message);
+            }
+          });
+        }
+      }
+
+      // 5. Programs flagged as needs_review — surface count for ops awareness
       const { rows: [{ cnt: reviewCount }] } = await query(
         "SELECT COUNT(*) AS cnt FROM programs WHERE qa_status = 'needs_review'"
       );
