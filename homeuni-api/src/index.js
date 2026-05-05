@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { errorHandler } from './middleware/errors.js';
 import { query } from './db/pool.js';
 import { rateLimit } from './middleware/rateLimit.js';
@@ -80,6 +83,19 @@ app.use('/api/lectures', ...aiSecurity, lectureRoutes);
 app.use('/api/study', ...aiSecurity, studyRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/flashcards', flashcardRoutes);
+
+// ── Static UI ─────────────────────────────────────────────────────────────────
+// ALL /api/* route registrations must appear ABOVE this line.
+// The catch-all below will intercept any unmatched GET and serve index.html for
+// client-side routing. Adding /api/* routes below this line will silently break
+// them in production — the browser will receive HTML instead of JSON.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const publicDir = join(__dirname, '../public');
+if (existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+  app.get('*', (_req, res) => res.sendFile(join(publicDir, 'index.html')));
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.use(errorHandler);
 

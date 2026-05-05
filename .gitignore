@@ -12,6 +12,7 @@ node_modules/
 dist/
 build/
 .vite/
+homeuni-api/public/
 
 # Logs
 logs/
