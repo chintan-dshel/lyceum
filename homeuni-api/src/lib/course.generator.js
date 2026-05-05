@@ -127,19 +127,35 @@ Write each lesson as a structured object. Every lesson MUST contain every field 
   },
 
   "worked_examples": [
-    // MINIMUM 2 fully worked examples per lesson.
-    // Each example shows the reasoning step by step, including dead ends or alternative approaches where instructive.
-    // Not just "here is the answer" — show the thinking.
+    // MINIMUM 2. Each MUST use this exact schema — no deviations:
+    {
+      "title": "<short descriptive title for the example>",
+      "scenario": "<setup: the problem or situation being worked through>",
+      "walkthrough": {
+        "step_1": "<first reasoning step — explain the thinking, not just the answer>",
+        "step_2": "<next step>",
+        "step_n": "..."
+      },
+      "key_takeaway": "<what this example illustrates — one sentence>"
+    }
+    // Show the reasoning step by step, including dead ends or alternative approaches where instructive.
+    // Do NOT use practice_problem fields (problem_id, bloom_level, prompt) here.
   ],
 
   "common_misconceptions": [
     // MINIMUM 2. Real misconceptions actual learners have, not strawmen.
-    // Format: "Learners often think X. This is wrong because Y. The correct intuition is Z."
+    // Each MUST use this schema:
+    { "misconception": "<what learners wrongly believe>", "correction": "<why it's wrong>", "correct_intuition": "<the right mental model>" }
   ],
 
   "practice_problems": [
-    // MINIMUM 3, with full worked solutions.
-    // Range across Bloom levels claimed in the lesson objectives.
+    // MINIMUM 3, with full worked solutions. Range across Bloom levels.
+    // Each MUST use this exact schema:
+    {
+      "problem": "<problem statement>",
+      "solution": "<full worked solution — show all steps>",
+      "bloom_level": "<Remember|Understand|Apply|Analyze|Evaluate|Create>"
+    }
     // At least one should be non-trivial — requiring the learner to combine ideas, not regurgitate.
   ],
 
