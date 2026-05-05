@@ -89,7 +89,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   // Block lazy generation if the QA pipeline is actively writing Phase 4 for this course
   const { rows: [courseRow] } = await query(
-    'SELECT generation_phase, draft_mode FROM courses WHERE id = $1',
+    `SELECT c.generation_phase, p.draft_mode
+     FROM courses c
+     JOIN programs p ON p.id = c.program_id
+     WHERE c.id = $1`,
     [lesson.course_id]
   );
   const qaInProgress = !!courseRow?.generation_phase && !courseRow?.draft_mode;
