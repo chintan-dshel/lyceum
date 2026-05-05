@@ -25,7 +25,7 @@ import {
   writeAssignmentsToDB,
   writeExamsToDB,
 } from '../lib/curriculum.agent.js';
-import { runQAPipeline } from '../lib/qa.pipeline.js';
+import { runSpecPipeline, generateNextLesson } from '../lib/qa.pipeline.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -132,7 +132,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
     };
 
     if (course.draft_mode) {
-      // Legacy fast path: stubs + lazy lesson content
+      // Legacy fast path: lightweight stubs + lazy lesson content (no spec reviewer)
       const legacyCourse = {
         ...course,
         program_title: course.program_title,
@@ -141,7 +141,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
       };
       setImmediate(() => generateCourseContentBackground(legacyCourse, programContext));
     } else {
-      // Full QA pipeline path
+      // Spec pipeline: generate curriculum structure + lesson 1, then lessons on demand
       const program = {
         id: course.program_id,
         program_brief: course.program_brief,
@@ -150,29 +150,31 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
       };
       setImmediate(async () => {
         try {
-          await runQAPipeline(course, program, programContext);
+          // Build reviewed spec + stubs — course page shows lesson list once this completes
+          const courseSpec = await runSpecPipeline(course, program, programContext);
 
-          // Generate assignments + exams after lessons are written
-          const { rows: savedLessons } = await query(
+          // Generate lesson 1 immediately so the student can start reading
+          await generateNextLesson(course.id, 1, courseSpec);
+          console.log(`[QA] ✓ ${course.code} lesson 1 ready`);
+
+          // Assignments + exams from stubs (student is reading lesson 1 by now)
+          const { rows: stubs } = await query(
             'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
             [course.id]
           );
-          if (savedLessons.length > 0) {
-            // Clear existing before re-generating to prevent duplicates on retry
+          if (stubs.length > 0) {
             await query('DELETE FROM assignments WHERE course_id = $1', [course.id]);
             await query('DELETE FROM exams WHERE course_id = $1', [course.id]);
             const [assignments, exams] = await Promise.all([
-              generateCourseAssignments(course, savedLessons),
-              generateCourseExams(course, savedLessons),
+              generateCourseAssignments(course, stubs),
+              generateCourseExams(course, stubs),
             ]);
             await writeAssignmentsToDB({ courseId: course.id, assignments });
             await writeExamsToDB({ courseId: course.id, exams });
-            console.log(`[QA] Assignments + exams written for course ${course.code}`);
+            console.log(`[QA] ✓ ${course.code} assignments + exams ready`);
           }
-
-          console.log(`[QA] Pipeline complete for course ${course.code}`);
         } catch (err) {
-          console.error(`[QA] Pipeline failed for course ${course.code}:`, err.message);
+          console.error(`[QA] Pipeline failed for ${course.code}:`, err.message);
         } finally {
           generatingCourses.delete(course.id);
         }

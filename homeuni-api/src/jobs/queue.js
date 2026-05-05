@@ -5,6 +5,7 @@
  */
 import { processCurriculumJob } from './curriculum.job.js';
 import { startStreakJob } from './streak.job.js';
+import { generateNextLesson } from '../lib/qa.pipeline.js';
 
 // Minimal job object that matches the BullMQ interface the job file expects
 function makeJob(data) {
@@ -56,15 +57,53 @@ export function startWorkers() {
         }
       }
 
-      // 2. Courses with a stuck generation_phase (QA pipeline crashed mid-run)
+      // 2. Courses with a stuck generation_phase (spec pipeline crashed mid-run) — clear label
       const { rows: stuckCourses } = await query(
         "SELECT id, code, generation_phase FROM courses WHERE generation_phase IS NOT NULL"
       );
       if (stuckCourses.length > 0) {
-        console.log(`[Queue] Found ${stuckCourses.length} course(s) with stuck QA pipeline — clearing phase label`);
+        console.log(`[Queue] Found ${stuckCourses.length} course(s) with stuck pipeline — clearing phase label`);
         for (const c of stuckCourses) {
           console.log(`[Queue]   → ${c.code} was stuck at: "${c.generation_phase}"`);
           await query("UPDATE courses SET generation_phase = NULL WHERE id = $1", [c.id]);
+        }
+      }
+
+      // 3. Courses with a stored spec but missing lesson content (pipeline died mid-generation)
+      //    Resume from the first lesson that has no content.
+      const { rows: resumable } = await query(
+        `SELECT c.id, c.code
+         FROM courses c
+         JOIN course_specs cs ON cs.course_id = c.id
+         WHERE c.generation_phase IS NULL
+           AND c.qa_status IS DISTINCT FROM 'error'
+           AND EXISTS (
+             SELECT 1 FROM lessons l
+             WHERE l.course_id = c.id
+               AND (l.content IS NULL OR l.content = '{}' OR l.content::text = '"{}"')
+           )
+         LIMIT 10`
+      );
+      if (resumable.length > 0) {
+        console.log(`[Queue] Found ${resumable.length} course(s) with missing lessons — resuming`);
+        for (const c of resumable) {
+          const { rows: [firstMissing] } = await query(
+            `SELECT number FROM lessons
+             WHERE course_id = $1
+               AND (content IS NULL OR content = '{}' OR content::text = '"{}"')
+             ORDER BY number ASC LIMIT 1`,
+            [c.id]
+          );
+          if (firstMissing) {
+            console.log(`[Queue]   → ${c.code}: resuming from lesson ${firstMissing.number}`);
+            const courseId = c.id;
+            const lessonNumber = firstMissing.number;
+            setImmediate(() =>
+              generateNextLesson(courseId, lessonNumber).catch(err =>
+                console.error(`[Queue] Resume failed for ${c.code}:`, err.message)
+              )
+            );
+          }
         }
       }
 

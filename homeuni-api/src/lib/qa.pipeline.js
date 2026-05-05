@@ -17,8 +17,8 @@ import { query } from '../db/pool.js';
 import { inferLearnerProfile } from './clarifier.agent.js';
 import {
   runPhases123, reviseSpec, writeAllLessons, rewriteLesson,
-  extractStubsFromSpec, mapLessonToContent, buildLessonSpecIndex,
-  runWithConcurrency,
+  writeSingleLesson, extractStubsFromSpec, mapLessonToContent,
+  buildLessonSpecIndex, runWithConcurrency,
 } from './course.generator.js';
 import { reviewSpec, reviewLessons } from './reviewer.agent.js';
 import { writeLessonStubsToDB } from './curriculum.agent.js';
@@ -360,4 +360,138 @@ function summarizeSpec(name, data) {
     return `${data.phase3?.modules?.length || 0} modules, ${lessons} lessons, ${data.phase1?.terminal_learning_outcomes?.length || 0} outcomes`;
   }
   return JSON.stringify(data).slice(0, 100);
+}
+
+// ── Spec-only pipeline (on-demand lesson generation mode) ────────────────────
+
+/**
+ * Run clarifier + phases 1–3 + spec reviewer + write stubs.
+ * Does NOT write any lesson content — lessons are generated on demand.
+ * Returns the approved courseSpec so the caller can immediately generate lesson 1
+ * without a DB round-trip.
+ */
+export async function runSpecPipeline(course, program, programContext) {
+  const reviewerEnabled = REVIEWER_ENABLED();
+  const log = makeLogger(course.id, program.id);
+  const meta = { programId: program.id, courseId: course.id };
+
+  log.info('Starting spec pipeline (on-demand lesson mode)');
+
+  try {
+    // Step 1: Clarifier
+    await setPhase(course.id, PROGRESS_LABELS.clarifier);
+    let learnerProfile = program.learner_profile;
+    if (!learnerProfile) {
+      learnerProfile = await inferLearnerProfile(program.program_brief, course, meta);
+      await query('UPDATE programs SET learner_profile = $1 WHERE id = $2',
+        [JSON.stringify(learnerProfile), program.id]);
+      log.info('Clarifier: learner profile inferred');
+    } else {
+      log.info('Clarifier: reusing existing learner profile');
+    }
+
+    // Step 2: Generator Phases 1–3
+    await setPhase(course.id, PROGRESS_LABELS.spec);
+    log.info('Generator: starting phases 1–3');
+    let courseSpec = await runPhases123(course, programContext, learnerProfile, null, meta);
+    log.phase('spec', courseSpec);
+
+    // Step 3: Spec reviewer
+    if (reviewerEnabled) {
+      await setPhase(course.id, PROGRESS_LABELS.spec_review);
+      log.info('Reviewer: reviewing spec');
+      const specVerdict = await reviewSpec(courseSpec, programContext, meta);
+      await persistVerdict({ programId: program.id, courseId: course.id, scope: 'spec', rubricSet: 'structural', verdict: specVerdict, attemptNum: 1 });
+      log.verdict('spec', specVerdict);
+
+      if (specVerdict.overall_verdict === 'REGENERATE') {
+        await setPhase(course.id, PROGRESS_LABELS.spec_regen);
+        log.info('Reviewer: spec REGENERATE — one retry');
+        const regen = await runPhases123(course, programContext, learnerProfile, specVerdict, meta);
+        const regenVerdict = await reviewSpec(regen, programContext, meta);
+        await persistVerdict({ programId: program.id, courseId: course.id, scope: 'spec', rubricSet: 'structural', verdict: regenVerdict, attemptNum: 2 });
+        log.verdict('spec_regen', regenVerdict);
+        if (regenVerdict.overall_verdict !== 'REGENERATE') courseSpec = regen;
+      } else if (specVerdict.overall_verdict === 'REVISE') {
+        await setPhase(course.id, PROGRESS_LABELS.spec_revise);
+        courseSpec = await applyRevision(courseSpec, specVerdict, course, programContext, learnerProfile, program.id, meta);
+      }
+    }
+
+    // Persist spec + stubs — course page becomes usable immediately
+    await persistCourseSpec(course.id, courseSpec);
+    const stubs = extractStubsFromSpec(courseSpec);
+    await writeLessonStubsToDB({ courseId: course.id, stubs });
+    await query("UPDATE courses SET qa_status = NULL WHERE id = $1", [course.id]);
+    await setPhase(course.id, null);
+
+    log.info(`Spec pipeline complete — ${stubs.length} stubs ready`);
+    return courseSpec;
+
+  } catch (err) {
+    log.error(err);
+    await query("UPDATE courses SET qa_status = 'error' WHERE id = $1", [course.id]).catch(() => {});
+    await setPhase(course.id, null).catch(() => {});
+    throw err;
+  }
+}
+
+// ── Single lesson generation (on-demand) ─────────────────────────────────────
+
+/**
+ * Write one lesson by number using the course's stored spec.
+ * Safe to call concurrently — the UPDATE is conditional so double-writes are no-ops.
+ *
+ * @param {string} courseId
+ * @param {number} lessonNumber   1-indexed
+ * @param {object} [courseSpec]   Pass if already in memory to skip the DB read
+ * @returns {object|null}         The written lesson object, or null if spec missing
+ */
+export async function generateNextLesson(courseId, lessonNumber, courseSpec = null) {
+  if (!courseSpec) {
+    const { rows: [specRow] } = await query(
+      'SELECT spec FROM course_specs WHERE course_id = $1', [courseId]
+    );
+    if (!specRow) {
+      console.warn(`[OnDemand] No spec for course ${courseId.slice(0, 8)} — cannot generate lesson ${lessonNumber}`);
+      return null;
+    }
+    courseSpec = specRow.spec;
+  }
+
+  const { phase3 } = courseSpec;
+  const allSpecs = [];
+  for (const mod of phase3.modules || []) {
+    for (const l of mod.lessons || []) allSpecs.push(l);
+  }
+  const lessonSpec = allSpecs[lessonNumber - 1];
+  if (!lessonSpec) {
+    console.warn(`[OnDemand] No spec at position ${lessonNumber} for course ${courseId.slice(0, 8)}`);
+    return null;
+  }
+
+  const { rows: [course] } = await query(
+    'SELECT id, code, title, description, learning_objectives FROM courses WHERE id = $1',
+    [courseId]
+  );
+  if (!course) return null;
+
+  try {
+    const lesson = await writeSingleLesson(lessonSpec, courseSpec, course, null, { courseId });
+    const content = mapLessonToContent(lesson);
+
+    await query(
+      `UPDATE lessons
+       SET content = $1, lesson_spec = $2, qa_status = 'passed'
+       WHERE course_id = $3 AND number = $4
+         AND (content IS NULL OR content = '{}' OR content::text = '"{}"')`,
+      [JSON.stringify(content), JSON.stringify(lesson), courseId, lessonNumber]
+    );
+
+    console.log(`[OnDemand] ✓ Lesson ${lessonNumber} for course ${course.code} generated`);
+    return lesson;
+  } catch (err) {
+    console.error(`[OnDemand] ✗ Lesson ${lessonNumber} for course ${course.code} failed:`, err.message);
+    return null;
+  }
 }

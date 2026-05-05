@@ -15,6 +15,7 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runProfessorTurn } from '../lib/agents.js';
 import { generateSingleLesson } from '../lib/curriculum.agent.js';
+import { generateNextLesson } from '../lib/qa.pipeline.js';
 import { updateStreak } from '../lib/streak.service.js';
 import { gradePracticeAnswer } from '../lib/practice.agent.js';
 import { getMemory, extractAndAppend, shouldExtract, formatMemoryForPrompt } from '../lib/learner.memory.js';
@@ -114,27 +115,29 @@ router.get('/:id', asyncHandler(async (req, res) => {
       generationFailed = true;
     } else if (!generatingLessons.has(lesson.id)) {
       generatingLessons.add(lesson.id);
-      const stub = { number: lesson.number, title: lesson.title };
-      const course = {
-        title: lesson.course_title,
-        code: lesson.course_code,
-        description: lesson.description,
-        learning_objectives: lesson.learning_objectives,
-      };
-      const programContext = {
-        title: lesson.program_title || '',
-        field_of_study: lesson.field_of_study || '',
-        degree_type: lesson.degree_type || '',
-      };
       setImmediate(async () => {
         try {
-          const content = await generateSingleLesson(stub, course, programContext);
-          // Conditional update: skip if another process already wrote content (race guard)
-          await query(
-            `UPDATE lessons SET content = $1 WHERE id = $2
-             AND (content = '{}' OR content IS NULL OR content::text = '\"{}\"')`,
-            [JSON.stringify(content), lesson.id]
-          );
+          // Prefer QA-grade generation via stored spec
+          const generated = await generateNextLesson(lesson.course_id, lesson.number);
+          if (!generated) {
+            // No spec stored — fall back to lightweight generator
+            const stub = { number: lesson.number, title: lesson.title };
+            const course = {
+              title: lesson.course_title, code: lesson.course_code,
+              description: lesson.description, learning_objectives: lesson.learning_objectives,
+            };
+            const programContext = {
+              title: lesson.program_title || '',
+              field_of_study: lesson.field_of_study || '',
+              degree_type: lesson.degree_type || '',
+            };
+            const content = await generateSingleLesson(stub, course, programContext);
+            await query(
+              `UPDATE lessons SET content = $1 WHERE id = $2
+               AND (content IS NULL OR content = '{}' OR content::text = '"{}"')`,
+              [JSON.stringify(content), lesson.id]
+            );
+          }
           console.log(`[Lazy] ✓ Lesson ${lesson.number} "${lesson.title}" content ready`);
         } catch (err) {
           console.error(`[Lazy] ✗ Lesson ${lesson.id} content failed:`, err.message);
@@ -201,6 +204,45 @@ router.post('/:id/visit', asyncHandler(async (req, res) => {
   ]).catch(err => console.error('[DifficultyService] Signal error:', err));
 
   res.json({ ok: true, visitCount: visit.visit_count });
+}));
+
+// ── Lesson Completion ─────────────────────────────────────────────────────────
+// Called by the frontend when the student finishes a lesson.
+// Triggers background generation of the next lesson so it's ready when they click Next.
+
+router.post('/:id/complete', asyncHandler(async (req, res) => {
+  const { rows: [lesson] } = await query(
+    `SELECT l.number, l.course_id FROM lessons l
+     JOIN courses c ON c.id = l.course_id
+     JOIN programs p ON p.id = c.program_id
+     WHERE l.id = $1 AND p.user_id = $2`,
+    [req.params.id, req.user.id]
+  );
+  if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+
+  const nextNumber = lesson.number + 1;
+  const { rows: [nextLesson] } = await query(
+    'SELECT id, content FROM lessons WHERE course_id = $1 AND number = $2',
+    [lesson.course_id, nextNumber]
+  );
+
+  let nextGenerating = false;
+  if (nextLesson && !nextLesson.content?.sections && !generatingLessons.has(nextLesson.id)) {
+    generatingLessons.add(nextLesson.id);
+    nextGenerating = true;
+    setImmediate(async () => {
+      try {
+        await generateNextLesson(lesson.course_id, nextNumber);
+      } catch (err) {
+        console.error(`[OnDemand] ✗ Lesson ${nextNumber} pre-gen failed:`, err.message);
+        failedLessons.add(nextLesson.id);
+      } finally {
+        generatingLessons.delete(nextLesson.id);
+      }
+    });
+  }
+
+  res.json({ ok: true, nextLesson: nextLesson ? { id: nextLesson.id, generating: nextGenerating } : null });
 }));
 
 // ── Professor Chat ───────────────────────────────────────────────────────────
