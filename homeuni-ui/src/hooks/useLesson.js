@@ -65,25 +65,38 @@ export function useLesson(lessonId) {
   return { lesson, navigation, generating, generationFailed, loading, error, retry };
 }
 
-// Track time spent and scroll depth for difficulty signals
+// Track time spent and scroll depth for difficulty signals.
+// Also pre-generates the next lesson after 90s or 80% scroll (whichever first).
 export function useLessonTracking(lessonId, estimatedMinutes) {
   const startTimeRef = useRef(Date.now());
   const scrollDepthRef = useRef(0);
   const reportedRef = useRef(false);
+  const completedRef = useRef(false);
+  const [nextGenerating, setNextGenerating] = useState(false);
+
+  const fireComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    lessons.complete(lessonId)
+      .then(({ nextLesson }) => { if (nextLesson?.generating) setNextGenerating(true); })
+      .catch(() => {});
+  }, [lessonId]);
 
   useEffect(() => {
     if (!lessonId) return;
     startTimeRef.current = Date.now();
     reportedRef.current = false;
+    completedRef.current = false;
+    setNextGenerating(false);
 
     const handleScroll = () => {
       const el = document.documentElement;
       const pct = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
       scrollDepthRef.current = Math.max(scrollDepthRef.current, pct || 0);
+      if (pct >= 80) fireComplete();
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Report on unmount or after 2 minutes of being on page
     const reportVisit = () => {
       if (reportedRef.current) return;
       reportedRef.current = true;
@@ -92,14 +105,19 @@ export function useLessonTracking(lessonId, estimatedMinutes) {
         .catch(() => {});
     };
 
-    const timer = setTimeout(reportVisit, 120000);
+    // Pre-generate next lesson after 90s; report visit after 2 minutes
+    const completeTimer = setTimeout(fireComplete, 90000);
+    const visitTimer = setTimeout(reportVisit, 120000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(completeTimer);
+      clearTimeout(visitTimer);
       window.removeEventListener('scroll', handleScroll);
       reportVisit();
     };
-  }, [lessonId]);
+  }, [lessonId, fireComplete]);
+
+  return { nextGenerating };
 }
 
 // Professor chat with streaming support

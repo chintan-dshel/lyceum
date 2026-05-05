@@ -311,7 +311,7 @@ export default function LessonView() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { lesson, navigation, generating, generationFailed, loading, retry } = useLesson(lessonId);
-  useLessonTracking(lessonId, lesson?.estimated_minutes);
+  const { nextGenerating } = useLessonTracking(lessonId, lesson?.estimated_minutes);
 
   const initials = user?.full_name?.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
@@ -437,6 +437,7 @@ export default function LessonView() {
                   playing={playing} setPlaying={setPlaying}
                   handRaised={handRaised} setHandRaised={setHandRaised}
                   navigation={navigation} programId={programId} navigate={navigate}
+                  nextGenerating={nextGenerating}
                 />
               </div>
             ) : (
@@ -527,7 +528,7 @@ export default function LessonView() {
   );
 }
 
-function LectureControls({ playing, setPlaying, handRaised, setHandRaised, navigation, programId, navigate }) {
+function LectureControls({ playing, setPlaying, handRaised, setHandRaised, navigation, programId, navigate, nextGenerating }) {
   const chapters = [
     { at: 0, label: 'Intro' },
     { at: 25, label: 'Core' },
@@ -574,8 +575,12 @@ function LectureControls({ playing, setPlaying, handRaised, setHandRaised, navig
           <Icon name="hand" size={14} /> {handRaised ? 'Lower hand' : 'Raise hand'}
         </button>
         {navigation?.next && (
-          <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => navigate(`/program/${programId}/lesson/${navigation.next.id}`)}>
-            Next <Icon name="chevron" size={14} />
+          <button className="btn ghost" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => navigate(`/program/${programId}/lesson/${navigation.next.id}`)}>
+            Next
+            {nextGenerating
+              ? <span className="spinner" style={{ width: 11, height: 11 }} />
+              : <Icon name="chevron" size={14} />}
           </button>
         )}
       </div>
