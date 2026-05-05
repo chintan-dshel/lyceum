@@ -142,6 +142,7 @@ Infer the full learner_profile JSON. For anything not explicitly stated, make a 
 
 function mapDegreeToLevel(degreeType) {
   const map = {
+    course: 'professional_certificate',
     certificate: 'professional_certificate',
     diploma: 'undergraduate_intro',
     associate: 'undergraduate_intro',
@@ -155,6 +156,7 @@ function mapDegreeToLevel(degreeType) {
 
 function estimateHours(degreeType) {
   const map = {
+    course: 10,
     certificate: 20,
     diploma: 40,
     associate: 60,

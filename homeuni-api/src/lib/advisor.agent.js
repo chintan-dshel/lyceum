@@ -40,6 +40,9 @@ When you have enough to propose a program (usually after 3-5 exchanges), produce
 }
 </program_proposal>
 
+degree_type MUST be one of these exact values: "course", "certificate", "diploma", "associate", "bachelor", "master", "doctorate", "custom".
+Use "course" for a single standalone course (1 semester, 1 course). Use "certificate" for short focused programs. Use "custom" only when no other value fits.
+
 Until you have enough information, set "ready": false and omit the other fields.
 Do not propose until you genuinely understand the student's goals.`;
 
