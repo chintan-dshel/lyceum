@@ -629,7 +629,7 @@ export function mapLessonToContent(lesson) {
   const sections = [];
 
   if (lesson.prerequisites_check) {
-    sections.push({ heading: 'Before You Start', body: lesson.prerequisites_check, type: 'text' });
+    sections.push({ heading: 'Before You Start', body: contentToString(lesson.prerequisites_check), type: 'text' });
   }
 
   // Core content — may be a string, an object with .sections[], or a structured object
@@ -637,54 +637,58 @@ export function mapLessonToContent(lesson) {
   if (typeof cc === 'string' && cc) {
     sections.push({ heading: 'Core Content', body: cc, type: 'key_concept' });
   } else if (Array.isArray(cc?.sections)) {
-    sections.push(...cc.sections);
+    // Sections from AI — normalise body to string
+    for (const sec of cc.sections) {
+      const body = contentToString(sec.body ?? sec.content);
+      if (body) sections.push({ heading: sec.heading || '', body, type: sec.type || 'key_concept' });
+    }
   } else if (cc && typeof cc === 'object') {
-    // Flatten structured sub-fields
     for (const [key, val] of Object.entries(cc)) {
-      if (typeof val === 'string' && val) {
-        sections.push({ heading: toTitle(key), body: val, type: 'key_concept' });
-      }
+      const body = contentToString(val);
+      if (body) sections.push({ heading: toTitle(key), body, type: 'key_concept' });
     }
   }
 
   // Worked examples
   for (let i = 0; i < (lesson.worked_examples || []).length; i++) {
     const ex = lesson.worked_examples[i];
-    sections.push({
-      heading: typeof ex === 'string' ? `Worked Example ${i + 1}` : (ex.title || `Worked Example ${i + 1}`),
-      body: typeof ex === 'string' ? ex : formatExample(ex),
+    const body = typeof ex === 'string' ? ex : formatExample(ex);
+    if (body) sections.push({
+      heading: (typeof ex !== 'string' && ex.title) ? ex.title : `Worked Example ${i + 1}`,
+      body,
       type: 'example',
     });
   }
 
   // Common misconceptions
   if (lesson.common_misconceptions?.length) {
-    sections.push({
-      heading: 'Common Misconceptions',
-      body: lesson.common_misconceptions.map((m, i) =>
-        typeof m === 'string' ? `${i + 1}. ${m}` : `${i + 1}. ${formatMisconception(m)}`
-      ).join('\n\n'),
-      type: 'text',
-    });
+    const body = lesson.common_misconceptions.map((m, i) =>
+      typeof m === 'string' ? `${i + 1}. ${m}` : `${i + 1}. ${formatMisconception(m)}`
+    ).join('\n\n');
+    if (body) sections.push({ heading: 'Common Misconceptions', body, type: 'text' });
   }
 
   // Connection forward + open questions as summary
   const summaryParts = [
     lesson.connection_forward,
     lesson.open_questions_or_limits,
-  ].filter(Boolean);
+  ].filter(Boolean).map(contentToString);
   if (summaryParts.length) {
     sections.push({ heading: 'Looking Ahead', body: summaryParts.join('\n\n'), type: 'summary' });
   }
 
-  // Practice problems as key terms (surface them for the learner without full solutions in view)
-  const key_terms = (lesson.practice_problems || []).slice(0, 3).map((p, i) => ({
-    term: `Problem ${i + 1}`,
-    definition: typeof p === 'string' ? p : (p.problem || p.question || JSON.stringify(p)),
-  }));
+  // Use explicit key_terms if the AI generated them; practice problems surface via the Practice tab
+  const raw_key_terms = lesson.key_terms || lesson.vocabulary || lesson.glossary || [];
+  const key_terms = Array.isArray(raw_key_terms)
+    ? raw_key_terms
+        .filter(t => t && typeof t.term === 'string')
+        .map(t => ({ term: t.term, definition: contentToString(t.definition) }))
+        .filter(t => t.definition)
+        .slice(0, 8)
+    : [];
 
   const further_reading = lesson.open_questions_or_limits
-    ? [lesson.open_questions_or_limits]
+    ? [contentToString(lesson.open_questions_or_limits)]
     : [];
 
   return { sections, key_terms, further_reading };
@@ -692,6 +696,19 @@ export function mapLessonToContent(lesson) {
 
 function toTitle(str) {
   return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function contentToString(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return val.map(contentToString).filter(Boolean).join('\n\n');
+  if (typeof val === 'object') {
+    return Object.entries(val)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${toTitle(k)}:\n${contentToString(v)}`)
+      .join('\n\n');
+  }
+  return String(val);
 }
 
 function formatExample(ex) {
@@ -720,7 +737,8 @@ function formatMisconception(m) {
   if (m.misconception) parts.push(`Learners often think: ${m.misconception}`);
   if (m.correction) parts.push(`This is wrong because: ${m.correction}`);
   if (m.correct_intuition) parts.push(`Correct intuition: ${m.correct_intuition}`);
-  return parts.join(' ') || JSON.stringify(m);
+  // Fallback: flatten any unknown schema
+  return parts.join(' ') || contentToString(m);
 }
 
 // ── Extract lesson stubs from spec (for draft mode) ─────────────────────────
