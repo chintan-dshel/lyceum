@@ -122,9 +122,20 @@ Write each lesson as a structured object. Every lesson MUST contain every field 
   "prerequisites_check": "<2–3 sentences reminding the learner of the specific prior concepts needed; reference earlier lesson_ids>",
 
   "core_content": {
-    // The actual teaching. Subject to ANTI-SLOP RULES below.
-    // Structure as conceptual progression: motivation → definition → mechanism → example → generalization.
-    // This field should contain the substantive lesson body as structured prose, not a placeholder.
+    "sections": [
+      { "type": "text",        "heading": "Why This Matters",  "body": "<motivation: the concrete problem this concept solves — plain prose>" },
+      { "type": "key_concept", "heading": "The Core Idea",     "body": "<definition + mechanism in plain prose — no sub-objects>" },
+      { "type": "text",        "heading": "How It Works",      "body": "<step-by-step explanation in plain prose>" },
+      { "type": "example",     "heading": "Concrete Example",  "body": "<illustrative example in plain prose>" },
+      { "type": "summary",     "heading": "The Big Picture",   "body": "<generalization + why it matters beyond this lesson>" }
+    ]
+    // RULES for core_content:
+    // - sections[] is the ONLY valid key — no other top-level keys
+    // - type must be one of: text | key_concept | example | summary
+    // - body MUST be a plain string — NEVER nest objects or arrays inside body
+    // - heading must be a descriptive label, NOT a structural name like "Section", "Heading", or "Body"
+    // - Aim for 4–8 sections. More sections = better granularity for the learner.
+    // - Subject to ANTI-SLOP RULES below.
   },
 
   "worked_examples": [

@@ -106,7 +106,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
 
   const { rows: lessons } = await query(
     `SELECT l.id, l.number, l.title, l.summary, l.lesson_type, l.estimated_minutes,
-            lv.visit_count, lv.scroll_depth, lv.time_spent_secs
+            l.status, lv.visit_count, lv.scroll_depth, lv.time_spent_secs
      FROM lessons l
      LEFT JOIN lesson_visits lv ON lv.lesson_id = l.id AND lv.user_id = $2
      WHERE l.course_id = $1

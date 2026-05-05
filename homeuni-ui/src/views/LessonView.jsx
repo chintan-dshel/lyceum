@@ -414,7 +414,16 @@ export default function LessonView() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { lesson, navigation, generating, generationFailed, loading, retry } = useLesson(lessonId);
-  const { nextGenerating } = useLessonTracking(lessonId, lesson?.estimated_minutes);
+  const hasContent = !!lesson?.content?.sections;
+  const { nextGenerating, markComplete } = useLessonTracking(lessonId, lesson?.estimated_minutes, hasContent);
+
+  const [isComplete, setIsComplete] = useState(false);
+  useEffect(() => { setIsComplete(lesson?.status === 'complete'); }, [lesson?.status]);
+
+  const handleMarkComplete = useCallback(async () => {
+    setIsComplete(true);
+    await markComplete();
+  }, [markComplete]);
 
   const initials = user?.full_name?.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
@@ -477,10 +486,20 @@ export default function LessonView() {
           crumbHref={`/program/${programId}/course/${lesson.course_id}`}
           title={lesson.title}
           actions={
-            <span className="pill sage" style={{ gap: 5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--sage)', animation: 'apulse 1.5s infinite' }} />
-              LIVE TEACHING
-            </span>
+            isComplete ? (
+              <span className="pill sage" style={{ gap: 5 }}>
+                <Icon name="check" size={11} /> COMPLETE
+              </span>
+            ) : generating ? (
+              <span className="pill" style={{ gap: 5, background: 'var(--amber-soft)', color: 'oklch(40% 0.1 75)' }}>
+                <span className="spinner" style={{ width: 9, height: 9, borderTopColor: 'oklch(48% 0.13 75)' }} />
+                GENERATING
+              </span>
+            ) : hasContent ? (
+              <span className="pill" style={{ background: 'var(--indigo-soft)', color: 'var(--indigo)' }}>
+                IN PROGRESS
+              </span>
+            ) : null
           }
         />
 
@@ -514,6 +533,13 @@ export default function LessonView() {
             {activeTab === 'lecture' ? (
               <>
                 <LessonArticle lesson={lesson} onAskProf={handleAskProf} />
+                {hasContent && !isComplete && (
+                  <div style={{ padding: '12px 22px', borderTop: '1px solid var(--rule)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="btn primary" onClick={handleMarkComplete} style={{ fontSize: 12.5 }}>
+                      <Icon name="check" size={13} /> Mark as complete
+                    </button>
+                  </div>
+                )}
                 <LessonNav navigation={navigation} programId={programId} navigate={navigate} nextGenerating={nextGenerating} />
               </>
             ) : (

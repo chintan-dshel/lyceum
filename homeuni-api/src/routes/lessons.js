@@ -206,16 +206,37 @@ router.post('/:id/visit', asyncHandler(async (req, res) => {
   res.json({ ok: true, visitCount: visit.visit_count });
 }));
 
+// ── Lesson Start ──────────────────────────────────────────────────────────────
+// Called when the student opens a lesson that has content. Sets status to in_progress.
+
+router.post('/:id/start', asyncHandler(async (req, res) => {
+  await query(
+    `UPDATE lessons SET status = 'in_progress'
+     WHERE id = $1 AND status = 'not_started'
+       AND EXISTS (
+         SELECT 1 FROM courses c
+         JOIN programs p ON p.id = c.program_id
+         WHERE c.id = lessons.course_id AND p.user_id = $2
+       )`,
+    [req.params.id, req.user.id]
+  );
+  res.json({ ok: true });
+}));
+
 // ── Lesson Completion ─────────────────────────────────────────────────────────
-// Called by the frontend when the student finishes a lesson.
+// Called by the frontend when the student manually marks a lesson complete.
 // Triggers background generation of the next lesson so it's ready when they click Next.
 
 router.post('/:id/complete', asyncHandler(async (req, res) => {
   const { rows: [lesson] } = await query(
-    `SELECT l.number, l.course_id FROM lessons l
-     JOIN courses c ON c.id = l.course_id
-     JOIN programs p ON p.id = c.program_id
-     WHERE l.id = $1 AND p.user_id = $2`,
+    `UPDATE lessons SET status = 'complete'
+     WHERE id = $1
+       AND EXISTS (
+         SELECT 1 FROM courses c
+         JOIN programs p ON p.id = c.program_id
+         WHERE c.id = lessons.course_id AND p.user_id = $2
+       )
+     RETURNING number, course_id`,
     [req.params.id, req.user.id]
   );
   if (!lesson) return res.status(404).json({ error: 'Lesson not found' });

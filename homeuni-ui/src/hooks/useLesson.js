@@ -66,34 +66,33 @@ export function useLesson(lessonId) {
 }
 
 // Track time spent and scroll depth for difficulty signals.
-// Also pre-generates the next lesson after 90s or 80% scroll (whichever first).
-export function useLessonTracking(lessonId, estimatedMinutes) {
+// Sets lesson to in_progress when content is available.
+// Completion is manual — call markComplete() from the UI.
+export function useLessonTracking(lessonId, estimatedMinutes, hasContent = false) {
   const startTimeRef = useRef(Date.now());
   const scrollDepthRef = useRef(0);
   const reportedRef = useRef(false);
-  const completedRef = useRef(false);
+  const startedRef = useRef(false);
   const [nextGenerating, setNextGenerating] = useState(false);
 
-  const fireComplete = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    lessons.complete(lessonId)
-      .then(({ nextLesson }) => { if (nextLesson?.generating) setNextGenerating(true); })
-      .catch(() => {});
-  }, [lessonId]);
+  // Mark in_progress once content is available
+  useEffect(() => {
+    if (!lessonId || !hasContent || startedRef.current) return;
+    startedRef.current = true;
+    lessons.start(lessonId).catch(() => {});
+  }, [lessonId, hasContent]);
 
   useEffect(() => {
     if (!lessonId) return;
     startTimeRef.current = Date.now();
     reportedRef.current = false;
-    completedRef.current = false;
+    startedRef.current = false;
     setNextGenerating(false);
 
     const handleScroll = () => {
       const el = document.documentElement;
       const pct = Math.round((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
       scrollDepthRef.current = Math.max(scrollDepthRef.current, pct || 0);
-      if (pct >= 80) fireComplete();
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
@@ -105,19 +104,22 @@ export function useLessonTracking(lessonId, estimatedMinutes) {
         .catch(() => {});
     };
 
-    // Pre-generate next lesson after 90s; report visit after 2 minutes
-    const completeTimer = setTimeout(fireComplete, 90000);
     const visitTimer = setTimeout(reportVisit, 120000);
 
     return () => {
-      clearTimeout(completeTimer);
       clearTimeout(visitTimer);
       window.removeEventListener('scroll', handleScroll);
       reportVisit();
     };
-  }, [lessonId, fireComplete]);
+  }, [lessonId]);
 
-  return { nextGenerating };
+  const markComplete = useCallback(() => {
+    return lessons.complete(lessonId)
+      .then(({ nextLesson }) => { if (nextLesson?.generating) setNextGenerating(true); })
+      .catch(() => {});
+  }, [lessonId]);
+
+  return { nextGenerating, markComplete };
 }
 
 // Professor chat with streaming support

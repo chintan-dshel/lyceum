@@ -52,7 +52,7 @@ export default function CourseView() {
   if (loading) return <div className="loading-screen">Loading course…</div>;
   if (!course) return <div className="loading-screen">Course not found</div>;
 
-  const completedLessons = lessonList.filter(l => l.visit_count > 0).length;
+  const completedLessons = lessonList.filter(l => l.status === 'complete').length;
   const prog = lessonList.length ? Math.round((completedLessons / lessonList.length) * 100) : 0;
 
   const tabs = [
@@ -74,7 +74,7 @@ export default function CourseView() {
               <button
                 className="btn primary"
                 onClick={() => {
-                  const next = lessonList.find(l => !l.visit_count) || lessonList[0];
+                  const next = lessonList.find(l => l.status !== 'complete') || lessonList[0];
                   if (next) navigate(`/program/${programId}/lesson/${next.id}`);
                 }}
               >
@@ -153,8 +153,11 @@ export default function CourseView() {
                     <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>No lessons yet.</div>
                   )}
                   {lessonList.map(lesson => {
-                    const done = lesson.visit_count > 0;
-                    const status = done ? 'done' : 'up';
+                    const st = lesson.status || 'not_started';
+                    const dotColor = st === 'complete' ? 'var(--sage)' : st === 'in_progress' ? 'var(--indigo)' : '#fff';
+                    const dotBorder = st === 'not_started' ? '1.5px solid var(--rule-strong)' : 'none';
+                    const statusLabel = st === 'complete' ? 'Complete' : st === 'in_progress' ? 'In Progress' : 'Not Started';
+                    const statusColor = st === 'complete' ? 'var(--sage)' : st === 'in_progress' ? 'var(--indigo)' : 'var(--ink-4)';
                     return (
                       <Link
                         key={lesson.id}
@@ -171,11 +174,10 @@ export default function CourseView() {
                         </span>
                         <div style={{
                           width: 10, height: 10, borderRadius: 5,
-                          background: done ? 'var(--ink)' : '#fff',
-                          border: done ? 'none' : '1.5px solid var(--rule-strong)',
+                          background: dotColor, border: dotBorder,
                         }} />
                         <div>
-                          <div className="serif" style={{ fontSize: 15, color: done ? 'var(--ink-3)' : 'var(--ink)' }}>{lesson.title}</div>
+                          <div className="serif" style={{ fontSize: 15, color: st === 'complete' ? 'var(--ink-3)' : 'var(--ink)' }}>{lesson.title}</div>
                           {lesson.summary && (
                             <div style={{ fontSize: 12, color: 'var(--ink-4)', marginTop: 2 }}>
                               {lesson.summary.slice(0, 110)}{lesson.summary.length > 110 ? '…' : ''}
@@ -183,9 +185,7 @@ export default function CourseView() {
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span className="kicker" style={{ color: done ? 'var(--ink-3)' : 'var(--indigo)' }}>
-                            {done ? 'Completed' : 'Upcoming'}
-                          </span>
+                          <span className="kicker" style={{ color: statusColor }}>{statusLabel}</span>
                           {lesson.estimated_minutes && (
                             <span style={{ fontSize: 11, color: 'var(--ink-4)', fontFamily: 'var(--f-mono)' }}>
                               {lesson.estimated_minutes}m

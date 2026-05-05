@@ -66,6 +66,7 @@ export const curriculum = {
 export const lessons = {
   list: (courseId) => request(`/lessons/course/${courseId}`),
   get: (id, { retry } = {}) => request(`/lessons/${id}${retry ? '?retry=true' : ''}`),
+  start: (id) => request(`/lessons/${id}/start`, { method: 'POST' }),
   visit: (id, data) => request(`/lessons/${id}/visit`, { method: 'POST', body: data }),
   complete: (id) => request(`/lessons/${id}/complete`, { method: 'POST' }),
   struggling: (id) => request(`/lessons/${id}/struggling`, { method: 'POST' }),
