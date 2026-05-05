@@ -24,7 +24,10 @@ function writeTrace({ meta = {}, model, inputTokens, outputTokens, latencyMs, st
         model, input_tokens, output_tokens,
         input_price_per_mtok, output_price_per_mtok, cost_usd,
         latency_ms, status, error_message)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+     VALUES (
+       $1, $2,
+       CASE WHEN $3::uuid IS NULL OR EXISTS (SELECT 1 FROM courses WHERE id = $3::uuid) THEN $3::uuid ELSE NULL END,
+       $4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [
       meta.userId    ?? null,
       meta.programId ?? null,
