@@ -10,12 +10,39 @@ import { useAuth } from '../hooks/useAuth.jsx';
 
 // ─── Lesson article ───────────────────────────────────────
 
+function formatExampleObject(ex) {
+  const parts = [];
+  if (ex.title) parts.push(ex.title);
+  if (ex.scenario) parts.push(`Scenario:\n${ex.scenario}`);
+  if (ex.walkthrough && typeof ex.walkthrough === 'object') {
+    const steps = Object.entries(ex.walkthrough)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => (typeof v === 'string' ? v : bodyToString(v)));
+    if (steps.length) parts.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n\n'));
+  }
+  if (ex.key_takeaway) parts.push(`Key takeaway: ${ex.key_takeaway}`);
+  if (ex.problem || ex.question) parts.push(`Problem: ${ex.problem || ex.question}`);
+  if (ex.solution || ex.answer) parts.push(`Solution: ${ex.solution || ex.answer}`);
+  if (ex.steps) parts.push(Array.isArray(ex.steps) ? ex.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') : ex.steps);
+  return parts.join('\n\n');
+}
+
 function bodyToString(val) {
   if (!val) return '';
-  if (typeof val === 'string') return val;
-  if (Array.isArray(val)) return val.map(bodyToString).join('\n\n');
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return bodyToString(parsed);
+      } catch { /* not JSON, fall through */ }
+    }
+    return val;
+  }
+  if (Array.isArray(val)) return val.map(bodyToString).filter(Boolean).join('\n\n');
   if (typeof val === 'object') {
-    // flatten object values as labelled prose
+    const formatted = formatExampleObject(val);
+    if (formatted) return formatted;
     return Object.entries(val)
       .filter(([, v]) => v)
       .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${bodyToString(v)}`)
