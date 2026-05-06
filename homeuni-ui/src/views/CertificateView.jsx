@@ -9,13 +9,14 @@ function formatDate(iso) {
 
 function degreeLabel(degreeType) {
   const map = {
-    bachelor: 'Bachelor of',
-    master:   'Master of',
-    phd:      'Doctor of Philosophy in',
+    bachelor:    'Bachelor of',
+    master:      'Master of',
+    phd:         'Doctor of Philosophy in',
     certificate: 'Certificate in',
-    associate: 'Associate of',
+    associate:   'Associate of',
+    course:      'Course Completion in',
   };
-  return map[degreeType] || degreeType;
+  return map[degreeType] || (degreeType ? degreeType.charAt(0).toUpperCase() + degreeType.slice(1) + ' in' : 'Degree in');
 }
 
 export default function CertificateView() {
@@ -128,8 +129,11 @@ export default function CertificateView() {
             has successfully completed the requirements for the
           </div>
 
-          <div style={{ fontSize: 22, color: '#2a1a0a', fontWeight: 700, marginBottom: 6, letterSpacing: '0.04em' }}>
-            {degreeLabel(cert.degree_type)} {cert.field_of_study}
+          <div style={{ fontSize: 12, letterSpacing: '0.2em', color: '#8a7a5a', marginBottom: 10, textTransform: 'uppercase' }}>
+            {degreeLabel(cert.degree_type)}
+          </div>
+          <div style={{ fontSize: 26, color: '#2a1a0a', fontWeight: 700, marginBottom: 6, letterSpacing: '0.03em' }}>
+            {cert.field_of_study}
           </div>
 
           <div style={{ fontSize: 15, color: '#5a4a2a', marginBottom: cert.gpa ? 8 : 28, fontStyle: 'italic' }}>
