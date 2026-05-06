@@ -87,7 +87,7 @@ function RatingButtons({ onRate, submitting }) {
 }
 
 // ─── Idle screen ──────────────────────────────────────────
-function IdleScreen({ due, onStart }) {
+function IdleScreen({ due, onStart, generating, generateMsg, onGenerate }) {
   const byLesson = due.reduce((acc, c) => {
     const key = c.lessonTitle || 'Unknown lesson';
     if (!acc[key]) acc[key] = 0;
@@ -108,17 +108,7 @@ function IdleScreen({ due, onStart }) {
             <div style={{ fontSize: 13, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)' }}>{generateMsg}</div>
           ) : (
             <button
-              onClick={() => {
-                setGenerating(true);
-                flashcardsApi.generateAll()
-                  .then(({ generating: n }) => {
-                    setGenerateMsg(n > 0
-                      ? `Generating ${n} deck${n > 1 ? 's' : ''} in the background — check back in a moment.`
-                      : 'No new lessons found to generate decks from. Complete some lessons first.');
-                  })
-                  .catch(() => setGenerateMsg('Could not start generation — please try again.'))
-                  .finally(() => setGenerating(false));
-              }}
+              onClick={onGenerate}
               disabled={generating}
               style={{
                 background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
@@ -300,7 +290,25 @@ export default function FlashcardView() {
         ) : (
           <div style={{ flex: 1, overflow: 'auto', padding: '32px 24px' }}>
 
-            {phase === 'idle' && <IdleScreen due={due} onStart={startReview} />}
+            {phase === 'idle' && (
+              <IdleScreen
+                due={due}
+                onStart={startReview}
+                generating={generating}
+                generateMsg={generateMsg}
+                onGenerate={() => {
+                  setGenerating(true);
+                  flashcardsApi.generateAll()
+                    .then(({ generating: n }) => {
+                      setGenerateMsg(n > 0
+                        ? `Generating ${n} deck${n > 1 ? 's' : ''} in the background — check back in a minute.`
+                        : 'No new lessons found. Complete some lessons first.');
+                    })
+                    .catch(() => setGenerateMsg('Could not start generation — try again.'))
+                    .finally(() => setGenerating(false));
+                }}
+              />
+            )}
 
             {phase === 'done' && <DoneScreen reviewed={reviewed} onReset={() => setPhase('idle')} />}
 

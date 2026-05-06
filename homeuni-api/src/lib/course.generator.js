@@ -671,9 +671,17 @@ export function mapLessonToContent(lesson) {
       if (body) sections.push({ heading: sec.heading || '', body, type: sec.type || 'key_concept' });
     }
   } else if (cc && typeof cc === 'object') {
-    for (const [key, val] of Object.entries(cc)) {
-      const body = contentToString(val);
-      if (body) sections.push({ heading: toTitle(key), body, type: 'key_concept' });
+    // AI returned a flat { heading, body } single-section object instead of { sections: [] }
+    if (typeof cc.body === 'string' || typeof cc.content === 'string') {
+      const body = contentToString(cc.body ?? cc.content);
+      const heading = typeof cc.heading === 'string' ? cc.heading : 'Core Content';
+      if (body) sections.push({ heading, body, type: cc.type || 'key_concept' });
+    } else {
+      for (const [key, val] of Object.entries(cc)) {
+        if (key === 'type') continue;
+        const body = contentToString(val);
+        if (body) sections.push({ heading: toTitle(key), body, type: 'key_concept' });
+      }
     }
   }
 
@@ -731,9 +739,14 @@ function contentToString(val) {
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) return val.map(contentToString).filter(Boolean).join('\n\n');
   if (typeof val === 'object') {
+    // If the AI returned a {heading, body} pair instead of a plain string, use the body
+    if (typeof val.body === 'string') return val.body;
+    if (typeof val.content === 'string') return val.content;
+    if (typeof val.text === 'string') return val.text;
     return Object.entries(val)
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${toTitle(k)}:\n${contentToString(v)}`)
+      .filter(([k, v]) => v && k !== 'heading' && k !== 'type')
+      .map(([, v]) => contentToString(v))
+      .filter(Boolean)
       .join('\n\n');
   }
   return String(val);

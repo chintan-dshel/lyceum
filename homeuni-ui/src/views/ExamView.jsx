@@ -209,17 +209,6 @@ function ResultView({ result, exam, programId, crumbHref, attempts, onRetake }) 
           crumb={`${exam.exam_type?.toUpperCase() || 'EXAM'}`}
           crumbHref={crumbHref}
           title={`${exam.title} — Results`}
-          actions={
-            <button
-              onClick={onRetake}
-              style={{
-                background: 'transparent', color: 'var(--ink-2)', border: '1px solid var(--rule)',
-                borderRadius: 8, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Retake
-            </button>
-          }
         />
         <div style={{ overflow: 'auto', flex: 1, padding: '28px 28px', maxWidth: 720 }}>
           <div style={{ background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 16, padding: '36px 28px', textAlign: 'center', marginBottom: 20 }}>
@@ -256,16 +245,28 @@ function ResultView({ result, exam, programId, crumbHref, attempts, onRetake }) 
             </div>
           )}
 
-          <Link
-            to="/dashboard"
-            style={{
-              display: 'inline-block', background: 'transparent', color: 'var(--ink-2)',
-              border: '1px solid var(--rule)', borderRadius: 8, padding: '9px 20px',
-              fontSize: 13, textDecoration: 'none', fontWeight: 500,
-            }}
-          >
-            Back to Dashboard
-          </Link>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <button
+              onClick={onRetake}
+              style={{
+                background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
+                borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Retake
+            </button>
+            <Link
+              to="/dashboard"
+              style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: 'transparent', color: 'var(--ink-2)',
+                border: '1px solid var(--rule)', borderRadius: 10, padding: '12px 20px',
+                fontSize: 14, textDecoration: 'none',
+              }}
+            >
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     </div>

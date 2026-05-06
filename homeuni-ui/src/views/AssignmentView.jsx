@@ -135,8 +135,8 @@ export default function AssignmentView() {
                       <div style={{ width: 22, height: 22, borderRadius: 11, background: 'radial-gradient(circle at 35% 35%, oklch(80% 0.08 265), var(--indigo))' }} />
                       <div style={{ fontSize: 13, fontWeight: 600 }}>Prof. AI's feedback</div>
                     </div>
-                    <div className="serif" style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-2)', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
-                      "{displayResult.feedbackText}"
+                    <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--ink-2)', whiteSpace: 'pre-wrap' }}>
+                      {displayResult.feedbackText}
                     </div>
                   </div>
 
