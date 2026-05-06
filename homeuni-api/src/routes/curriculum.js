@@ -26,6 +26,10 @@ import {
   writeExamsToDB,
 } from '../lib/curriculum.agent.js';
 import { runSpecPipeline, generateNextLesson } from '../lib/qa.pipeline.js';
+import {
+  MAX_ASSIGNMENTS, MAX_EXAMS,
+  generatingAssignments, generatingExams,
+} from '../lib/assessment.state.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -182,9 +186,6 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
 // Each endpoint generates ONE item (the next in sequence) and returns immediately.
 // The client polls the assignments/exams list to detect when it appears.
 
-const generatingAssignments = new Set(); // courseId → in-flight
-const generatingExams = new Set();
-
 router.post('/course/:courseId/next-assignment', asyncHandler(async (req, res) => {
   const { rows: [course] } = await query(
     `SELECT c.*, p.user_id FROM courses c
@@ -198,9 +199,9 @@ router.post('/course/:courseId/next-assignment', asyncHandler(async (req, res) =
     'SELECT position FROM assignments WHERE course_id = $1 ORDER BY position',
     [course.id]
   );
-  const nextPosition = existing.length + 1;
-  if (nextPosition > 2) return res.json({ ok: true, done: true, message: 'All assignments generated' });
+  if (existing.length >= MAX_ASSIGNMENTS) return res.json({ ok: true, done: true, message: 'All assignments generated' });
   if (generatingAssignments.has(course.id)) return res.json({ ok: true, generating: true });
+  const nextPosition = existing.length + 1;
 
   const { rows: lessons } = await query(
     'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
@@ -237,9 +238,9 @@ router.post('/course/:courseId/next-exam', asyncHandler(async (req, res) => {
     'SELECT position FROM exams WHERE course_id = $1 ORDER BY position',
     [course.id]
   );
-  const nextPosition = existing.length + 1;
-  if (nextPosition > 2) return res.json({ ok: true, done: true, message: 'All exams generated' });
+  if (existing.length >= MAX_EXAMS) return res.json({ ok: true, done: true, message: 'All exams generated' });
   if (generatingExams.has(course.id)) return res.json({ ok: true, generating: true });
+  const nextPosition = existing.length + 1;
 
   const { rows: lessons } = await query(
     'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',

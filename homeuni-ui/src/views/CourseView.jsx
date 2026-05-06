@@ -390,13 +390,6 @@ export default function CourseView() {
                 </div>
               )}
 
-              {/* Professor card */}
-              <div className="card" style={{ padding: 14 }}>
-                <div className="kicker" style={{ marginBottom: 8 }}>Professor · AI</div>
-                <div className="serif" style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--ink-2)', fontStyle: 'italic' }}>
-                  "Attend every lecture. Ask questions freely — I remember every conversation we've had."
-                </div>
-              </div>
             </aside>
           </div>
         </div>

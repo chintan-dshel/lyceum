@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { usePrograms } from '../hooks/useProgram.js';
 import { useTelemetrySummary } from '../hooks/useTelemetry.js';
-import { programs as programsApi, flashcards as flashcardsApi } from '../lib/api.js';
+import { programs as programsApi } from '../lib/api.js';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import Icon from '../components/ui/Icon.jsx';
@@ -13,12 +13,6 @@ export default function DashboardView() {
   const { programs, loading, refresh } = usePrograms();
   const { data: telemetry } = useTelemetrySummary();
   const navigate = useNavigate();
-  const [dueCount, setDueCount] = useState(0);
-
-  useEffect(() => {
-    flashcardsApi.due().then(({ count }) => setDueCount(count || 0)).catch(() => {});
-  }, []);
-
   const firstName = user?.full_name?.split(' ')[0] || 'there';
 
   const deleteProgram = useCallback(async (id, title) => {
@@ -64,34 +58,6 @@ export default function DashboardView() {
         />
 
         <div className="page-content">
-          {dueCount > 0 && (
-            <div
-              onClick={() => navigate('/flashcards')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', marginBottom: 24,
-                background: 'oklch(95% 0.06 265)', border: '1px solid oklch(82% 0.1 265)',
-                borderRadius: 12, cursor: 'pointer', transition: 'box-shadow .15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-1)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = ''}
-            >
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon name="sparkle" size={16} style={{ color: '#fff' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>
-                  {dueCount} flashcard{dueCount !== 1 ? 's' : ''} due for review
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 1 }}>
-                  Spaced repetition keeps concepts fresh — takes just a few minutes.
-                </div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--indigo)', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                Review now <Icon name="arrow" size={12} style={{ color: 'var(--indigo)' }} />
-              </div>
-            </div>
-          )}
-
           {programs.length === 0 ? (
             <EmptyState navigate={navigate} />
           ) : (

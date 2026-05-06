@@ -1,7 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { flashcards as flashcardsApi } from '../lib/api.js';
 import LyceumLogo from './ui/LyceumLogo.jsx';
 import Icon from './ui/Icon.jsx';
 import Avatar from './ui/Avatar.jsx';
@@ -9,20 +7,12 @@ import Avatar from './ui/Avatar.jsx';
 export default function Sidebar({ programId, active, termLabel, weekProgress }) {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [dueCount, setDueCount] = useState(0);
-
-  useEffect(() => {
-    flashcardsApi.due()
-      .then(({ count }) => setDueCount(count || 0))
-      .catch(() => {});
-  }, []);
 
   const isActive = (id) => active === id || location.pathname.includes(`/${id}`);
 
   const navItems = [
     { id: 'dashboard',   icon: 'grid',     label: 'Dashboard',       to: '/dashboard' },
     { id: 'courses',     icon: 'book',     label: 'My Courses',      to: programId ? `/program/${programId}/semester/1` : '/dashboard' },
-    { id: 'flashcards',      icon: 'layers',   label: 'Flashcards',    to: '/flashcards', badge: dueCount > 0 ? String(dueCount) : null, badgeDue: true },
     { id: 'knowledge-graph', icon: 'compass',  label: 'Knowledge Map', to: programId ? `/program/${programId}/knowledge-graph` : null },
     { id: 'study',           icon: 'chat',     label: 'Study Groups',  to: programId ? `/program/${programId}/study` : null },
     { id: 'transcript',  icon: 'chart',    label: 'Transcript',      to: programId ? `/program/${programId}/transcript` : null },

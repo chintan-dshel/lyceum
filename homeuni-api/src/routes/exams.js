@@ -14,6 +14,7 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runExamGrading } from '../lib/agents.js';
 import { signalExamLowScore } from '../lib/difficulty.service.js';
+import { recomputeCourseGrade } from '../lib/grade.service.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { injectionDetection } from '../middleware/injectionDetection.js';
 import { piiAudit } from '../middleware/piiAudit.js';
@@ -127,6 +128,10 @@ router.post('/:id/submit', rateLimit, injectionDetection, piiAudit, asyncHandler
     userId: req.user.id, programId: exam.program_id,
     courseId: exam.course_id, score: result.score,
   }).catch(err => console.error('[DifficultyService]', err));
+
+  // Recompute course grade + program GPA (fire-and-forget)
+  recomputeCourseGrade(exam.course_id, req.user.id)
+    .catch(err => console.error('[GradeService]', err.message));
 
   res.json({ attempt: graded, score: result.score, gradeLetter: result.gradeLetter, feedback: result.feedback });
 }));

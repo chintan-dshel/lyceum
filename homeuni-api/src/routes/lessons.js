@@ -15,6 +15,7 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runProfessorTurn } from '../lib/agents.js';
 import { generateSingleLesson, generateSingleAssignment, generateSingleExam, writeAssignmentsToDB, writeExamsToDB } from '../lib/curriculum.agent.js';
+import { MAX_ASSIGNMENTS, MAX_EXAMS, generatingAssignments, generatingExams } from '../lib/assessment.state.js';
 import { generateNextLesson } from '../lib/qa.pipeline.js';
 import { mapLessonToContent } from '../lib/course.generator.js';
 import { updateStreak } from '../lib/streak.service.js';
@@ -307,34 +308,50 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
 
       // Reached halfway — generate mid-course assessment if not yet done
       if (completedCount >= halfpoint) {
-        const toGenerate = [];
-        if (!assignmentPositions.has(1)) toGenerate.push(
-          generateSingleAssignment(course, allLessons, 1)
-            .then(a => writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] }))
-            .then(() => console.log(`[Auto] ✓ ${course.code} mid-course assignment ready`))
-        );
-        if (!examPositions.has(1)) toGenerate.push(
-          generateSingleExam(course, allLessons, 1)
-            .then(e => writeExamsToDB({ courseId: lesson.course_id, exams: [e] }))
-            .then(() => console.log(`[Auto] ✓ ${course.code} midterm ready`))
-        );
-        await Promise.all(toGenerate);
+        if (!assignmentPositions.has(1) && existingAssignments.length < MAX_ASSIGNMENTS && !generatingAssignments.has(lesson.course_id)) {
+          generatingAssignments.add(lesson.course_id);
+          try {
+            const a = await generateSingleAssignment(course, allLessons, 1);
+            await writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] });
+            console.log(`[Auto] ✓ ${course.code} mid-course assignment ready`);
+          } finally {
+            generatingAssignments.delete(lesson.course_id);
+          }
+        }
+        if (!examPositions.has(1) && existingExams.length < MAX_EXAMS && !generatingExams.has(lesson.course_id)) {
+          generatingExams.add(lesson.course_id);
+          try {
+            const e = await generateSingleExam(course, allLessons, 1);
+            await writeExamsToDB({ courseId: lesson.course_id, exams: [e] });
+            console.log(`[Auto] ✓ ${course.code} midterm ready`);
+          } finally {
+            generatingExams.delete(lesson.course_id);
+          }
+        }
       }
 
       // Completed all lessons — generate end-of-course assessment
       if (completedCount === total) {
-        const toGenerate = [];
-        if (!assignmentPositions.has(2)) toGenerate.push(
-          generateSingleAssignment(course, allLessons, 2)
-            .then(a => writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] }))
-            .then(() => console.log(`[Auto] ✓ ${course.code} final assignment ready`))
-        );
-        if (!examPositions.has(2)) toGenerate.push(
-          generateSingleExam(course, allLessons, 2)
-            .then(e => writeExamsToDB({ courseId: lesson.course_id, exams: [e] }))
-            .then(() => console.log(`[Auto] ✓ ${course.code} final exam ready`))
-        );
-        await Promise.all(toGenerate);
+        if (!assignmentPositions.has(2) && existingAssignments.length < MAX_ASSIGNMENTS && !generatingAssignments.has(lesson.course_id)) {
+          generatingAssignments.add(lesson.course_id);
+          try {
+            const a = await generateSingleAssignment(course, allLessons, 2);
+            await writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] });
+            console.log(`[Auto] ✓ ${course.code} final assignment ready`);
+          } finally {
+            generatingAssignments.delete(lesson.course_id);
+          }
+        }
+        if (!examPositions.has(2) && existingExams.length < MAX_EXAMS && !generatingExams.has(lesson.course_id)) {
+          generatingExams.add(lesson.course_id);
+          try {
+            const e = await generateSingleExam(course, allLessons, 2);
+            await writeExamsToDB({ courseId: lesson.course_id, exams: [e] });
+            console.log(`[Auto] ✓ ${course.code} final exam ready`);
+          } finally {
+            generatingExams.delete(lesson.course_id);
+          }
+        }
       }
     } catch (err) {
       console.error('[Auto] Assessment generation error:', err.message);

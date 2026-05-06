@@ -13,7 +13,6 @@ import ExamView from './views/ExamView.jsx';
 import TranscriptView from './views/TranscriptView.jsx';
 import GradebookView from './views/GradebookView.jsx';
 import StudyGroupView from './views/StudyGroupView.jsx';
-import FlashcardView from './views/FlashcardView.jsx';
 import CertificateView from './views/CertificateView.jsx';
 import KnowledgeGraphView from './views/KnowledgeGraphView.jsx';
 
@@ -51,7 +50,6 @@ export default function App() {
           <Route path="/program/:programId/transcript" element={<PrivateRoute><TranscriptView /></PrivateRoute>} />
           <Route path="/program/:programId/gradebook" element={<PrivateRoute><GradebookView /></PrivateRoute>} />
           <Route path="/program/:programId/study" element={<PrivateRoute><StudyGroupView /></PrivateRoute>} />
-          <Route path="/flashcards" element={<PrivateRoute><FlashcardView /></PrivateRoute>} />
           <Route path="/program/:programId/knowledge-graph" element={<PrivateRoute><KnowledgeGraphView /></PrivateRoute>} />
 
           {/* Public certificate verification */}

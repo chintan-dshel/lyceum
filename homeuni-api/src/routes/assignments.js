@@ -13,6 +13,7 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runAssessment } from '../lib/agents.js';
 import { signalAssignmentLowScore } from '../lib/difficulty.service.js';
+import { recomputeCourseGrade } from '../lib/grade.service.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { injectionDetection } from '../middleware/injectionDetection.js';
 import { piiAudit } from '../middleware/piiAudit.js';
@@ -108,6 +109,10 @@ router.post('/:id/submit', rateLimit, injectionDetection, piiAudit, asyncHandler
     userId: req.user.id, programId: assignment.program_id,
     courseId: assignment.course_id, score: result.score,
   }).catch(err => console.error('[DifficultyService]', err));
+
+  // Recompute course grade + program GPA (fire-and-forget)
+  recomputeCourseGrade(assignment.course_id, req.user.id)
+    .catch(err => console.error('[GradeService]', err.message));
 
   res.json({
     submission: graded,
