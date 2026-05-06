@@ -22,7 +22,6 @@ export default function Sidebar({ programId, active, termLabel, weekProgress }) 
   const navItems = [
     { id: 'dashboard',   icon: 'grid',     label: 'Dashboard',       to: '/dashboard' },
     { id: 'courses',     icon: 'book',     label: 'My Courses',      to: programId ? `/program/${programId}/semester/1` : '/dashboard' },
-    { id: 'lecture',     icon: 'play',     label: "Today's Lecture", badge: 'Live', to: null },
     { id: 'flashcards',      icon: 'layers',   label: 'Flashcards',    to: '/flashcards', badge: dueCount > 0 ? String(dueCount) : null, badgeDue: true },
     { id: 'knowledge-graph', icon: 'compass',  label: 'Knowledge Map', to: programId ? `/program/${programId}/knowledge-graph` : null },
     { id: 'study',           icon: 'chat',     label: 'Study Groups',  to: programId ? `/program/${programId}/study` : null },
@@ -39,7 +38,6 @@ export default function Sidebar({ programId, active, termLabel, weekProgress }) 
       <div className="sidebar-logo">
         <LyceumLogo size={22} />
         <div className="sidebar-logo-text">Lyceum</div>
-        <span className="kicker" style={{ marginLeft: 'auto', fontSize: 9.5 }}>α</span>
       </div>
 
       <div className="kicker sidebar-section-label">Workspace</div>

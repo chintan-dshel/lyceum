@@ -144,6 +144,51 @@ router.post('/lesson/:lessonId/review', asyncHandler(async (req, res) => {
   res.json({ next });
 }));
 
+// ── Bulk Generate ─────────────────────────────────────────────────────────────
+// Generates decks for all lessons with content that don't yet have a deck.
+
+router.post('/generate-all', asyncHandler(async (req, res) => {
+  const { rows: lessons } = await query(
+    `SELECT l.id, l.title, l.content, l.lesson_spec
+     FROM lessons l
+     JOIN courses c ON c.id = l.course_id
+     JOIN programs p ON p.id = c.program_id
+     WHERE p.user_id = $1
+       AND l.content IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM flashcard_decks fd WHERE fd.lesson_id = l.id
+       )`,
+    [req.user.id]
+  );
+
+  const pending = lessons.filter(l => !generatingDecks.has(l.id));
+
+  for (const lesson of pending) {
+    generatingDecks.add(lesson.id);
+    setImmediate(async () => {
+      try {
+        const cards = await generateFlashcards({
+          lesson,
+          lessonTitle: lesson.title,
+          meta: { userId: req.user.id },
+        });
+        await query(
+          `INSERT INTO flashcard_decks (lesson_id, cards)
+           VALUES ($1, $2)
+           ON CONFLICT (lesson_id) DO UPDATE SET cards = EXCLUDED.cards`,
+          [lesson.id, JSON.stringify(cards)]
+        );
+      } catch (err) {
+        console.error('[Flashcards] Bulk generation failed:', lesson.id, err.message);
+      } finally {
+        generatingDecks.delete(lesson.id);
+      }
+    });
+  }
+
+  res.json({ generating: pending.length, total: lessons.length });
+}));
+
 // ── Due Cards ─────────────────────────────────────────────────────────────────
 
 router.get('/due', asyncHandler(async (req, res) => {

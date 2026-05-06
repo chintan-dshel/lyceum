@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
-import Icon from './ui/Icon.jsx';
 
 export default function TopBar({ crumb, crumbHref, title, actions }) {
   const { user } = useAuth();
@@ -11,17 +10,17 @@ export default function TopBar({ crumb, crumbHref, title, actions }) {
       <div className="topbar-breadcrumb">
         {crumb && (
           crumbHref
-            ? <Link to={crumbHref} className="kicker" style={{ fontSize: 10, textDecoration: 'none', opacity: 0.7 }}>{crumb}</Link>
+            ? (
+              <Link to={crumbHref} className="kicker" style={{ fontSize: 10, textDecoration: 'none', opacity: 0.7, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, lineHeight: 1 }}>←</span>
+                {crumb}
+              </Link>
+            )
             : <div className="kicker" style={{ fontSize: 10 }}>{crumb}</div>
         )}
         <div className="topbar-title">{title}</div>
       </div>
       <div style={{ flex: 1 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--ink-3)' }}>
-        <Icon name="search" size={15} />
-        <span className="mono">⌘K</span>
-      </div>
-      <div style={{ width: 1, height: 22, background: 'var(--rule)' }} />
       {streak > 0 && (
         <div
           title={`${streak}-day streak`}
@@ -35,7 +34,6 @@ export default function TopBar({ crumb, crumbHref, title, actions }) {
           <span style={{ fontFamily: 'var(--f-mono)' }}>{streak}</span>
         </div>
       )}
-      <Icon name="bell" size={16} style={{ color: 'var(--ink-2)' }} />
       {actions && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{actions}</div>}
     </header>
   );

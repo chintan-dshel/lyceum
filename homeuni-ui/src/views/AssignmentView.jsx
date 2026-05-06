@@ -52,9 +52,11 @@ export default function AssignmentView() {
               {/* The task */}
               <div className="card" style={{ padding: 24 }}>
                 <div className="kicker" style={{ marginBottom: 6 }}>The task</div>
-                <p className="serif" style={{ fontSize: 18, fontWeight: 500, lineHeight: 1.4, marginBottom: 16 }}>
-                  {assignment.prompt}
-                </p>
+                <div className="serif" style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 16, color: 'var(--ink)' }}>
+                  {assignment.prompt.split(/\n\n+/).map((para, i) => (
+                    <p key={i} style={{ margin: i === 0 ? '0 0 10px' : '10px 0 0' }}>{para}</p>
+                  ))}
+                </div>
                 {assignment.rubric?.length > 0 && (
                   <>
                     <div className="kicker" style={{ marginBottom: 8 }}>Rubric</div>

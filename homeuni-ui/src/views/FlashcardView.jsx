@@ -101,9 +101,34 @@ function IdleScreen({ due, onStart }) {
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
           <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>All caught up!</div>
-          <div style={{ fontSize: 14, color: 'var(--ink-3)', lineHeight: 1.6 }}>
-            No flashcards due today. Come back tomorrow<br />or visit a lesson to generate a new deck.
+          <div style={{ fontSize: 14, color: 'var(--ink-3)', lineHeight: 1.6, marginBottom: 20 }}>
+            No flashcards due today. Generate decks from your lessons to get started.
           </div>
+          {generateMsg ? (
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)' }}>{generateMsg}</div>
+          ) : (
+            <button
+              onClick={() => {
+                setGenerating(true);
+                flashcardsApi.generateAll()
+                  .then(({ generating: n }) => {
+                    setGenerateMsg(n > 0
+                      ? `Generating ${n} deck${n > 1 ? 's' : ''} in the background — check back in a moment.`
+                      : 'No new lessons found to generate decks from. Complete some lessons first.');
+                  })
+                  .catch(() => setGenerateMsg('Could not start generation — please try again.'))
+                  .finally(() => setGenerating(false));
+              }}
+              disabled={generating}
+              style={{
+                background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
+                borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600,
+                cursor: generating ? 'default' : 'pointer', opacity: generating ? 0.6 : 1,
+              }}
+            >
+              {generating ? 'Starting…' : 'Generate flashcards'}
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -174,6 +199,8 @@ export default function FlashcardView() {
 
   const [due, setDue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [generateMsg, setGenerateMsg] = useState(null);
   const [phase, setPhase] = useState('idle'); // idle | review | done
   const [queue, setQueue] = useState([]);
   const [current, setCurrent] = useState(0);

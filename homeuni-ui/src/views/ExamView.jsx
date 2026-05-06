@@ -1,65 +1,90 @@
 import { useParams, Link } from 'react-router-dom';
 import { useExam } from '../hooks/useAssessment.js';
 import Sidebar from '../components/Sidebar.jsx';
+import TopBar from '../components/TopBar.jsx';
+
+const Q_CARD = {
+  background: 'var(--paper)', border: '1px solid var(--rule)',
+  borderRadius: 12, padding: '20px 24px', marginBottom: 16,
+};
+
+const OPTION_BASE = {
+  display: 'flex', alignItems: 'center', gap: 12,
+  padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
+  border: '1px solid var(--rule)', marginBottom: 8,
+  fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
+  transition: 'border-color 0.12s, background 0.12s',
+  userSelect: 'none',
+};
+
+const OPTION_SELECTED = {
+  ...OPTION_BASE,
+  background: 'var(--indigo-soft)',
+  borderColor: 'var(--indigo)',
+};
 
 export default function ExamView() {
   const { programId, examId } = useParams();
   const { exam, attempts, currentAttempt, answers, loading, submitting, result, startAttempt, setAnswer, submitExam } = useExam(examId);
 
-  if (loading) return <div className="loading-screen">Loading...</div>;
+  if (loading) return <div className="loading-screen">Loading…</div>;
   if (!exam) return <div className="loading-screen">Exam not found</div>;
 
+  const crumbHref = `/program/${programId}/course/${exam.course_id}`;
   const lastAttempt = attempts[0];
 
-  // Show results if just submitted
   if (result) {
-    return <ResultView result={result} exam={exam} programId={programId} attempts={attempts} onRetake={startAttempt} />;
+    return <ResultView result={result} exam={exam} programId={programId} crumbHref={crumbHref} attempts={attempts} onRetake={startAttempt} />;
   }
 
-  // Show previous result if no active attempt
   if (!currentAttempt && lastAttempt?.submitted_at) {
     return (
       <ResultView
         result={{ score: lastAttempt.score, gradeLetter: lastAttempt.grade_letter, feedback: lastAttempt.feedback }}
         exam={exam}
         programId={programId}
+        crumbHref={crumbHref}
         attempts={attempts}
         onRetake={startAttempt}
       />
     );
   }
 
-  // Not started yet
   if (!currentAttempt) {
     return (
       <div className="app-shell">
         <Sidebar programId={programId} />
         <div className="main-content">
-          <div className="topbar">
-            <div className="topbar-breadcrumb">
-              <Link to="/dashboard">Dashboard</Link>
-              <span className="sep">/</span>
-              <span className="current">{exam.title}</span>
+          <TopBar
+            crumb={`${exam.exam_type?.toUpperCase() || 'EXAM'}`}
+            crumbHref={crumbHref}
+            title={exam.title}
+          />
+          <div style={{ overflow: 'auto', flex: 1, padding: '32px 28px', maxWidth: 640 }}>
+            <div style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Knowledge Check · {exam.exam_type}
             </div>
-          </div>
-          <div className="page-content" style={{ maxWidth: 640 }}>
-            <div className="page-header">
-              <div style={{ fontSize: '0.75rem', color: 'var(--amber-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-                Knowledge Check · {exam.exam_type}
+            <h1 style={{ fontFamily: 'var(--f-display)', fontSize: 26, fontWeight: 600, marginBottom: 20, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              {exam.title}
+            </h1>
+            <div style={{ background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 12, padding: 20, marginBottom: 24 }}>
+              <div style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--ink-2)' }}>
+                {exam.instructions || 'Take your time — this is here to help you identify what you know well and what to revisit.'}
               </div>
-              <h1>{exam.title}</h1>
-            </div>
-            <div className="card" style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: '0.875rem', lineHeight: 1.7, color: 'var(--gray-700)' }}>
-                {exam.instructions || "Take your time — this is here to help you identify what you know well and what to revisit. There's no pressure."}
-              </div>
-              <div style={{ marginTop: 16, display: 'flex', gap: 24, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <div style={{ marginTop: 14, display: 'flex', gap: 20, fontSize: 12.5, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)' }}>
                 <span>{exam.questions?.length} questions</span>
-                <span>{exam.max_score} points</span>
-                {attempts.length > 0 && <span>Attempted {attempts.length}x</span>}
+                <span>{exam.max_score} pts</span>
+                {attempts.length > 0 && <span>Attempted {attempts.length}×</span>}
               </div>
             </div>
-            <button className="btn btn-accent btn-lg" onClick={startAttempt}>
+            <button
+              onClick={startAttempt}
+              style={{
+                background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
+                borderRadius: 10, padding: '13px 28px', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', letterSpacing: '-0.01em',
+              }}
+            >
               {attempts.length > 0 ? 'Retake Knowledge Check' : 'Start Knowledge Check'}
             </button>
           </div>
@@ -68,65 +93,102 @@ export default function ExamView() {
     );
   }
 
-  // Active attempt
   return (
     <div className="app-shell">
       <Sidebar programId={programId} />
       <div className="main-content">
-        <div className="topbar">
-          <div className="topbar-breadcrumb">
-            <span className="current">{exam.title}</span>
-          </div>
-          <div className="topbar-actions">
-            <button className="btn btn-accent" onClick={submitExam} disabled={submitting}>
-              {submitting ? 'Grading...' : 'Submit Answers'}
+        <TopBar
+          crumb={`${exam.exam_type?.toUpperCase() || 'EXAM'}`}
+          crumbHref={crumbHref}
+          title={exam.title}
+          actions={
+            <button
+              onClick={submitExam}
+              disabled={submitting}
+              style={{
+                background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
+                borderRadius: 8, padding: '7px 18px', fontSize: 13, fontWeight: 600,
+                cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.6 : 1,
+              }}
+            >
+              {submitting ? 'Grading…' : 'Submit Answers'}
             </button>
-          </div>
-        </div>
-        <div className="page-content" style={{ maxWidth: 760 }}>
-          <div className="page-header">
-            <h1>{exam.title}</h1>
-            <p className="subtitle">Answer at your own pace. Submit when you're ready.</p>
+          }
+        />
+        <div style={{ overflow: 'auto', flex: 1, padding: '28px 28px', maxWidth: 760 }}>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 24 }}>
+            Answer at your own pace. Submit when you're ready.
           </div>
 
           {exam.questions?.map((q, i) => (
-            <div key={q.id} className="exam-question">
-              <div className="exam-question-number">Question {i + 1} · {q.points} points</div>
-              <div className="exam-question-text">{q.question}</div>
+            <div key={q.id} style={Q_CARD}>
+              <div style={{ fontSize: 10.5, fontFamily: 'var(--f-mono)', color: 'var(--ink-4)', letterSpacing: '0.08em', marginBottom: 8 }}>
+                QUESTION {i + 1} · {q.points} PTS
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.55, marginBottom: 16 }}>
+                {q.question}
+              </div>
+
               {q.type === 'multiple_choice' && (
-                <div className="exam-options">
-                  {q.options?.map((opt, j) => (
-                    <div
-                      key={j}
-                      className={`exam-option ${answers[q.id] === opt ? 'selected' : ''}`}
-                      onClick={() => setAnswer(q.id, opt)}
-                    >
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: answers[q.id] === opt ? 'var(--navy-600)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {answers[q.id] === opt && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--navy-600)' }} />}
+                <div>
+                  {q.options?.map((opt, j) => {
+                    const selected = answers[q.id] === opt;
+                    return (
+                      <div
+                        key={j}
+                        style={selected ? OPTION_SELECTED : OPTION_BASE}
+                        onClick={() => setAnswer(q.id, opt)}
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={0}
+                        onKeyDown={e => e.key === 'Enter' && setAnswer(q.id, opt)}
+                      >
+                        <div style={{
+                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                          border: `2px solid ${selected ? 'var(--indigo)' : 'var(--ink-4)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: selected ? 'var(--indigo)' : 'transparent',
+                          transition: 'all 0.12s',
+                        }}>
+                          {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--paper)' }} />}
+                        </div>
+                        <span>{opt}</span>
                       </div>
-                      {opt}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
+
               {(q.type === 'short_answer' || q.type === 'essay') && (
                 <textarea
-                  id="exam-answer"
-                  name="exam-answer"
-                  className="form-input"
                   value={answers[q.id] || ''}
                   onChange={e => setAnswer(q.id, e.target.value)}
-                  placeholder="Your answer..."
+                  placeholder="Your answer…"
                   rows={q.type === 'essay' ? 6 : 3}
-                  style={{ marginTop: 8 }}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '10px 14px', borderRadius: 8,
+                    border: '1px solid var(--rule)',
+                    fontSize: 14, fontFamily: 'var(--f-text)', color: 'var(--ink)',
+                    background: 'var(--paper-2)', outline: 'none', resize: 'vertical',
+                    lineHeight: 1.6,
+                  }}
                 />
               )}
             </div>
           ))}
 
-          <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <button className="btn btn-accent btn-lg" onClick={submitExam} disabled={submitting}>
-              {submitting ? 'Grading your answers...' : 'Submit Answers'}
+          <div style={{ padding: '8px 0 32px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={submitExam}
+              disabled={submitting}
+              style={{
+                background: 'var(--indigo)', color: 'var(--paper)', border: 'none',
+                borderRadius: 10, padding: '13px 36px', fontSize: 14, fontWeight: 600,
+                cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.6 : 1,
+              }}
+            >
+              {submitting ? 'Grading your answers…' : 'Submit Answers'}
             </button>
           </div>
         </div>
@@ -135,56 +197,75 @@ export default function ExamView() {
   );
 }
 
-function ResultView({ result, exam, programId, attempts, onRetake }) {
+function ResultView({ result, exam, programId, crumbHref, attempts, onRetake }) {
+  const gradeColors = { A: 'var(--sage)', B: 'oklch(48% 0.13 200)', C: 'var(--amber)', D: 'var(--amber)', F: 'var(--rose)' };
+  const gradeColor = gradeColors[result.gradeLetter?.[0]] || 'var(--ink-2)';
+
   return (
     <div className="app-shell">
       <Sidebar programId={programId} />
       <div className="main-content">
-        <div className="topbar">
-          <div className="topbar-breadcrumb">
-            <Link to="/dashboard">Dashboard</Link>
-            <span className="sep">/</span>
-            <span className="current">{exam.title} — Results</span>
-          </div>
-        </div>
-        <div className="page-content" style={{ maxWidth: 720 }}>
-          <div className="page-header">
-            <h1>Knowledge Check Complete</h1>
-          </div>
-
-          <div className="card" style={{ textAlign: 'center', padding: 40, marginBottom: 24 }}>
-            <div className={`grade-chip grade-${result.gradeLetter}`} style={{ width: 64, height: 64, fontSize: '1.8rem', margin: '0 auto 16px' }}>
-              {result.gradeLetter}
+        <TopBar
+          crumb={`${exam.exam_type?.toUpperCase() || 'EXAM'}`}
+          crumbHref={crumbHref}
+          title={`${exam.title} — Results`}
+          actions={
+            <button
+              onClick={onRetake}
+              style={{
+                background: 'transparent', color: 'var(--ink-2)', border: '1px solid var(--rule)',
+                borderRadius: 8, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Retake
+            </button>
+          }
+        />
+        <div style={{ overflow: 'auto', flex: 1, padding: '28px 28px', maxWidth: 720 }}>
+          <div style={{ background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 16, padding: '36px 28px', textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'var(--f-display)', fontSize: 72, fontWeight: 700, color: gradeColor, lineHeight: 1, marginBottom: 8 }}>
+              {result.gradeLetter || '—'}
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--navy-800)' }}>
+            <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
               {result.score}/{exam.max_score}
             </div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)' }}>
               Attempt {attempts.length}
             </div>
           </div>
 
           {result.feedback?.length > 0 && (
-            <div className="card" style={{ marginBottom: 24 }}>
-              <div className="card-title" style={{ marginBottom: 16 }}>Question Breakdown</div>
+            <div style={{ background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+              <div style={{ fontSize: 10.5, fontFamily: 'var(--f-mono)', color: 'var(--ink-4)', letterSpacing: '0.08em', marginBottom: 14 }}>
+                QUESTION BREAKDOWN
+              </div>
               {result.feedback.map((f, i) => (
-                <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontWeight: 500, color: 'var(--navy-800)' }}>Question {i + 1}</div>
-                    <div style={{ color: f.score === f.max_points ? 'var(--green-600)' : 'var(--amber-600)' }}>
+                <div key={i} style={{ padding: '12px 0', borderTop: i ? '1px solid var(--rule)' : 'none', fontSize: 13.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'baseline' }}>
+                    <span style={{ fontWeight: 500, color: 'var(--ink)' }}>Question {i + 1}</span>
+                    <span style={{
+                      fontFamily: 'var(--f-mono)', fontSize: 12,
+                      color: f.score === f.max_points ? 'var(--sage)' : 'var(--amber)',
+                    }}>
                       {f.score}/{f.max_points}
-                    </div>
+                    </span>
                   </div>
-                  <div style={{ color: 'var(--gray-700)', lineHeight: 1.6 }}>{f.explanation}</div>
+                  <div style={{ color: 'var(--ink-2)', lineHeight: 1.6 }}>{f.explanation}</div>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button className="btn btn-ghost" onClick={onRetake}>Retake</button>
-            <Link to={`/dashboard`} className="btn btn-primary">Back to Dashboard</Link>
-          </div>
+          <Link
+            to="/dashboard"
+            style={{
+              display: 'inline-block', background: 'transparent', color: 'var(--ink-2)',
+              border: '1px solid var(--rule)', borderRadius: 8, padding: '9px 20px',
+              fontSize: 13, textDecoration: 'none', fontWeight: 500,
+            }}
+          >
+            Back to Dashboard
+          </Link>
         </div>
       </div>
     </div>

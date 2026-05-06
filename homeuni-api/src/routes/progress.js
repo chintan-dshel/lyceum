@@ -75,9 +75,33 @@ router.get('/:programId/transcript', asyncHandler(async (req, res) => {
 
   for (const sem of semesters) {
     const { rows: courses } = await query(
-      'SELECT code, title, credit_hours, final_grade, grade_letter, course_type FROM courses WHERE semester_id = $1 ORDER BY position',
+      'SELECT id, code, title, credit_hours, final_grade, grade_letter, course_type FROM courses WHERE semester_id = $1 ORDER BY position',
       [sem.id]
     );
+
+    for (const course of courses) {
+      // Latest submission per assignment
+      const { rows: assignments } = await query(
+        `SELECT DISTINCT ON (a.id) a.title, s.score, s.grade_letter
+         FROM assignments a
+         LEFT JOIN submissions s ON s.assignment_id = a.id AND s.user_id = $2
+         WHERE a.course_id = $1
+         ORDER BY a.id, s.submitted_at DESC NULLS LAST`,
+        [course.id, req.user.id]
+      );
+      // Latest attempt per exam
+      const { rows: examAttempts } = await query(
+        `SELECT DISTINCT ON (e.id) e.title, e.exam_type, ea.score, ea.grade_letter
+         FROM exams e
+         LEFT JOIN exam_attempts ea ON ea.exam_id = e.id AND ea.user_id = $2
+         WHERE e.course_id = $1
+         ORDER BY e.id, ea.submitted_at DESC NULLS LAST`,
+        [course.id, req.user.id]
+      );
+      course.assignments = assignments;
+      course.examAttempts = examAttempts;
+    }
+
     sem.courses = courses;
   }
 

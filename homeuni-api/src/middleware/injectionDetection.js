@@ -31,8 +31,10 @@ function extractText(body) {
   if (!body || typeof body !== 'object') return null;
 
   // Scalar text fields used across all LLM-facing routes
+  // body.answer is excluded — it comes from practice grading where students write
+  // academic text that legitimately contains phrases like "original instructions"
   const scalar = body.message || body.content || body.text
-    || body.answer || body.content_text || null;
+    || body.content_text || null;
 
   // answers: exam submissions send { questionId: studentAnswerString, ... }
   let fromAnswers = null;

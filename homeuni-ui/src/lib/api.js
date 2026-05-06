@@ -86,7 +86,7 @@ export const assignments = {
   submit: (id, content_text) => request(`/assignments/${id}/submit`, {
     method: 'POST',
     body: { content_text },
-  }),
+  }, 120000),
   submissions: (id) => request(`/assignments/${id}/submissions`),
 };
 
@@ -95,7 +95,7 @@ export const exams = {
   list: (courseId) => request(`/exams/course/${courseId}`),
   get: (id) => request(`/exams/${id}`),
   startAttempt: (id) => request(`/exams/${id}/attempt`, { method: 'POST' }),
-  submit: (id, data) => request(`/exams/${id}/submit`, { method: 'POST', body: data }),
+  submit: (id, data) => request(`/exams/${id}/submit`, { method: 'POST', body: data }, 120000),
   attempts: (id) => request(`/exams/${id}/attempts`),
 };
 
@@ -139,6 +139,7 @@ export const flashcards = {
   getDeck: (lessonId) => request(`/flashcards/lesson/${lessonId}`),
   review: (lessonId, cardIndex, quality) => request(`/flashcards/lesson/${lessonId}/review`, { method: 'POST', body: { cardIndex, quality } }),
   due: () => request('/flashcards/due'),
+  generateAll: () => request('/flashcards/generate-all', { method: 'POST' }),
 };
 
 // ── Telemetry ─────────────────────────────────────────────
