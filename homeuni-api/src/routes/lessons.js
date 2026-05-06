@@ -16,6 +16,7 @@ import { query } from '../db/pool.js';
 import { runProfessorTurn } from '../lib/agents.js';
 import { generateSingleLesson, generateSingleAssignment, generateSingleExam, writeAssignmentsToDB, writeExamsToDB } from '../lib/curriculum.agent.js';
 import { generateNextLesson } from '../lib/qa.pipeline.js';
+import { mapLessonToContent } from '../lib/course.generator.js';
 import { updateStreak } from '../lib/streak.service.js';
 import { gradePracticeAnswer } from '../lib/practice.agent.js';
 import { getMemory, extractAndAppend, shouldExtract, formatMemoryForPrompt } from '../lib/learner.memory.js';
@@ -97,6 +98,13 @@ router.get('/:id', asyncHandler(async (req, res) => {
     [lesson.course_id]
   );
   const qaInProgress = !!courseRow?.generation_phase && !courseRow?.draft_mode;
+
+  // Re-derive content from lesson_spec using the latest mapLessonToContent.
+  // This ensures historically stored content (which may have bad "Heading:"/"Body:" labels)
+  // is always re-rendered through the current normalisation logic.
+  if (lesson.lesson_spec && lesson.lesson_spec.core_content !== undefined) {
+    lesson.content = mapLessonToContent(lesson.lesson_spec);
+  }
 
   const hasContent = !!lesson.content?.sections;
   let generating = false;

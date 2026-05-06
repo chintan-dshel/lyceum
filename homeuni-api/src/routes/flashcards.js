@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { generateFlashcards } from '../lib/flashcard.generator.js';
+import { mapLessonToContent } from '../lib/course.generator.js';
 import { sm2 } from '../lib/sm2.js';
 
 const router = Router();
@@ -46,17 +47,22 @@ router.get('/lesson/:lessonId', asyncHandler(async (req, res) => {
       generatingDecks.add(lessonId);
       setImmediate(async () => {
         try {
+          if (lesson.lesson_spec?.core_content !== undefined) {
+            lesson.content = mapLessonToContent(lesson.lesson_spec);
+          }
           const cards = await generateFlashcards({
             lesson,
             lessonTitle: lesson.title,
             meta: { userId: req.user.id },
           });
-          await query(
-            `INSERT INTO flashcard_decks (lesson_id, cards)
-             VALUES ($1, $2)
-             ON CONFLICT (lesson_id) DO UPDATE SET cards = EXCLUDED.cards`,
-            [lessonId, JSON.stringify(cards)]
-          );
+          if (cards.length > 0) {
+            await query(
+              `INSERT INTO flashcard_decks (lesson_id, cards)
+               VALUES ($1, $2)
+               ON CONFLICT (lesson_id) DO UPDATE SET cards = EXCLUDED.cards`,
+              [lessonId, JSON.stringify(cards)]
+            );
+          }
         } catch (err) {
           console.error('[Flashcards] Generation failed:', err.message);
         } finally {
@@ -145,7 +151,7 @@ router.post('/lesson/:lessonId/review', asyncHandler(async (req, res) => {
 }));
 
 // ── Bulk Generate ─────────────────────────────────────────────────────────────
-// Generates decks for all lessons with content that don't yet have a deck.
+// Generates decks for all lessons that have a lesson_spec but no non-empty deck.
 
 router.post('/generate-all', asyncHandler(async (req, res) => {
   const { rows: lessons } = await query(
@@ -154,9 +160,11 @@ router.post('/generate-all', asyncHandler(async (req, res) => {
      JOIN courses c ON c.id = l.course_id
      JOIN programs p ON p.id = c.program_id
      WHERE p.user_id = $1
-       AND l.content IS NOT NULL
+       AND l.lesson_spec IS NOT NULL
        AND NOT EXISTS (
-         SELECT 1 FROM flashcard_decks fd WHERE fd.lesson_id = l.id
+         SELECT 1 FROM flashcard_decks fd
+         WHERE fd.lesson_id = l.id
+           AND jsonb_array_length(fd.cards) > 0
        )`,
     [req.user.id]
   );
@@ -165,6 +173,10 @@ router.post('/generate-all', asyncHandler(async (req, res) => {
 
   for (const lesson of pending) {
     generatingDecks.add(lesson.id);
+    // Re-derive clean content from lesson_spec before generating cards
+    if (lesson.lesson_spec?.core_content !== undefined) {
+      lesson.content = mapLessonToContent(lesson.lesson_spec);
+    }
     setImmediate(async () => {
       try {
         const cards = await generateFlashcards({
@@ -172,12 +184,17 @@ router.post('/generate-all', asyncHandler(async (req, res) => {
           lessonTitle: lesson.title,
           meta: { userId: req.user.id },
         });
-        await query(
-          `INSERT INTO flashcard_decks (lesson_id, cards)
-           VALUES ($1, $2)
-           ON CONFLICT (lesson_id) DO UPDATE SET cards = EXCLUDED.cards`,
-          [lesson.id, JSON.stringify(cards)]
-        );
+        if (cards.length > 0) {
+          await query(
+            `INSERT INTO flashcard_decks (lesson_id, cards)
+             VALUES ($1, $2)
+             ON CONFLICT (lesson_id) DO UPDATE SET cards = EXCLUDED.cards`,
+            [lesson.id, JSON.stringify(cards)]
+          );
+          console.log(`[Flashcards] ✓ Generated ${cards.length} cards for "${lesson.title}"`);
+        } else {
+          console.warn(`[Flashcards] 0 cards generated for "${lesson.title}" — skipping insert`);
+        }
       } catch (err) {
         console.error('[Flashcards] Bulk generation failed:', lesson.id, err.message);
       } finally {
