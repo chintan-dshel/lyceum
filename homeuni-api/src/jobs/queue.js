@@ -116,7 +116,7 @@ export function startWorkers() {
       // 4. Courses with lessons generated but no assignments/exams yet
       //    (pipeline was killed between lesson-1 write and assignments generation)
       const { rows: needsAssignments } = await query(
-        `SELECT c.id, c.code, c.title, c.description, c.learning_objectives, c.degree_type
+        `SELECT c.id, c.code, c.title, c.description, c.learning_objectives
          FROM courses c
          WHERE c.generation_phase IS NULL
            AND c.qa_status IS DISTINCT FROM 'error'
