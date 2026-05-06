@@ -1,12 +1,22 @@
 # Lyceum — AI-Powered University
 
-> A full university simulator built by one person with Claude. Not a chatbot wrapper. A real learning system.
+A complete university simulator that generates a personalised degree programme, tutors you through it in real time, and adapts as you learn — built by one person with Claude.
 
-Lyceum generates a personalised degree programme — complete curriculum, lectures, assignments, exams, and a professor who remembers you — from a single conversation. Every piece of content is authored by a pipeline of specialised AI agents, reviewed for quality before it reaches the student, and adapted based on how you're actually learning.
+**[Live demo](https://lyceum-production-bf1c.up.railway.app/)** · **[Watch the 90-second demo](https://www.loom.com/share/db7e387ea6d54d2293df53e9311082cf)**
+
+---
+
+## What's interesting about this
+
+- **Three-tier lazy curriculum generation.** Content generates on demand, not at program creation, with a six-rubric LLM reviewer that can reject and rewrite a lesson spec before it reaches the student.
+- **Passive difficulty detection.** The system watches for struggle without asking — time-on-lesson, repeated opens, low scores — and triggers advisor nudges when weighted signals cross a threshold.
+- **Learner memory that makes the professor non-generic.** A background Haiku call extracts structured facts every 4th conversation turn and injects them into every subsequent professor session — struggles, preferences, mastery evidence.
+- **Multi-rubric LLM reviewer with forced rewrites.** A QA agent reads each lesson spec against six rubrics with PASS/REVISE/REGENERATE verdicts and a hard one-retry cap before flagging for human review.
 
 **Stack:** Node.js · React · PostgreSQL · Claude API (Haiku / Sonnet / Opus)  
-**Tests:** 160 passing (unit + integration + E2E against live Claude)  
-**Cost to generate a full programme:** ~$0.30–1.50 depending on depth
+**Tests:** 160 passing (unit + integration + E2E against live Claude)
+
+[Architectural patterns →](homeuni-api/PATTERNS.md)
 
 ---
 
