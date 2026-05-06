@@ -20,8 +20,8 @@ import {
   generateLessonStubs,
   generateSingleLesson,
   writeLessonStubsToDB,
-  generateCourseAssignments,
-  generateCourseExams,
+  generateSingleAssignment,
+  generateSingleExam,
   writeAssignmentsToDB,
   writeExamsToDB,
 } from '../lib/curriculum.agent.js';
@@ -69,24 +69,9 @@ async function generateCourseContentBackground(course, programContext) {
     console.error(`[Lazy] ✗ ${course.code} lesson 1 pre-gen failed:`, err.message);
   }
 
-  // Step 3 — assignments + exams using stub titles (student is reading lesson 1 by now)
-  try {
-    const { rows: savedStubs } = await query(
-      'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
-      [course.id]
-    );
-    if (savedStubs.length === 0) return;
-
-    const [assignments, exams] = await Promise.all([
-      generateCourseAssignments(course, savedStubs),
-      generateCourseExams(course, savedStubs),
-    ]);
-    await writeAssignmentsToDB({ courseId: course.id, assignments });
-    await writeExamsToDB({ courseId: course.id, exams });
-    console.log(`[Lazy] ✓ ${course.code} assignments + exams ready`);
-  } catch (err) {
-    console.error(`[Lazy] ✗ ${course.code} assignments/exams failed:`, err.message);
-  }
+  // Assignments and exams now generate progressively as the student completes lessons.
+  // See POST /api/lessons/:id/complete for auto-triggers, and
+  // POST /api/curriculum/course/:id/next-assignment|next-exam for on-demand.
 }
 
 // NOTE: /course/:courseId must be defined BEFORE /:programId or Express will
@@ -190,6 +175,91 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
     generating,
     generationPhase: course.generation_phase || null,
     qaStatus: course.qa_status || null,
+  });
+}));
+
+// ── On-Demand Assignment / Exam Generation ───────────────────────────────────
+// Each endpoint generates ONE item (the next in sequence) and returns immediately.
+// The client polls the assignments/exams list to detect when it appears.
+
+const generatingAssignments = new Set(); // courseId → in-flight
+const generatingExams = new Set();
+
+router.post('/course/:courseId/next-assignment', asyncHandler(async (req, res) => {
+  const { rows: [course] } = await query(
+    `SELECT c.*, p.user_id FROM courses c
+     JOIN programs p ON p.id = c.program_id
+     WHERE c.id = $1 AND p.user_id = $2`,
+    [req.params.courseId, req.user.id]
+  );
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+
+  const { rows: existing } = await query(
+    'SELECT position FROM assignments WHERE course_id = $1 ORDER BY position',
+    [course.id]
+  );
+  const nextPosition = existing.length + 1;
+  if (nextPosition > 2) return res.json({ ok: true, done: true, message: 'All assignments generated' });
+  if (generatingAssignments.has(course.id)) return res.json({ ok: true, generating: true });
+
+  const { rows: lessons } = await query(
+    'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
+    [course.id]
+  );
+  if (lessons.length === 0) return res.status(400).json({ error: 'No lessons yet — generate lessons first' });
+
+  generatingAssignments.add(course.id);
+  res.json({ ok: true, generating: true, position: nextPosition });
+
+  setImmediate(async () => {
+    try {
+      const assignment = await generateSingleAssignment(course, lessons, nextPosition);
+      await writeAssignmentsToDB({ courseId: course.id, assignments: [assignment] });
+      console.log(`[OnDemand] ✓ ${course.code} assignment ${nextPosition} ready`);
+    } catch (err) {
+      console.error(`[OnDemand] ✗ ${course.code} assignment ${nextPosition} failed:`, err.message);
+    } finally {
+      generatingAssignments.delete(course.id);
+    }
+  });
+}));
+
+router.post('/course/:courseId/next-exam', asyncHandler(async (req, res) => {
+  const { rows: [course] } = await query(
+    `SELECT c.*, p.user_id FROM courses c
+     JOIN programs p ON p.id = c.program_id
+     WHERE c.id = $1 AND p.user_id = $2`,
+    [req.params.courseId, req.user.id]
+  );
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+
+  const { rows: existing } = await query(
+    'SELECT position FROM exams WHERE course_id = $1 ORDER BY position',
+    [course.id]
+  );
+  const nextPosition = existing.length + 1;
+  if (nextPosition > 2) return res.json({ ok: true, done: true, message: 'All exams generated' });
+  if (generatingExams.has(course.id)) return res.json({ ok: true, generating: true });
+
+  const { rows: lessons } = await query(
+    'SELECT number, title FROM lessons WHERE course_id = $1 ORDER BY number',
+    [course.id]
+  );
+  if (lessons.length === 0) return res.status(400).json({ error: 'No lessons yet — generate lessons first' });
+
+  generatingExams.add(course.id);
+  res.json({ ok: true, generating: true, position: nextPosition });
+
+  setImmediate(async () => {
+    try {
+      const exam = await generateSingleExam(course, lessons, nextPosition);
+      await writeExamsToDB({ courseId: course.id, exams: [exam] });
+      console.log(`[OnDemand] ✓ ${course.code} exam ${nextPosition} ready`);
+    } catch (err) {
+      console.error(`[OnDemand] ✗ ${course.code} exam ${nextPosition} failed:`, err.message);
+    } finally {
+      generatingExams.delete(course.id);
+    }
   });
 }));
 

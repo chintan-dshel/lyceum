@@ -60,6 +60,8 @@ export const curriculum = {
   get: (programId) => request(`/curriculum/${programId}`),
   getCourse: (courseId) => request(`/curriculum/course/${courseId}`),
   graph: (programId) => request(`/curriculum/${programId}/graph`),
+  nextAssignment: (courseId) => request(`/curriculum/course/${courseId}/next-assignment`, { method: 'POST' }),
+  nextExam: (courseId) => request(`/curriculum/course/${courseId}/next-exam`, { method: 'POST' }),
 };
 
 // ── Lessons ───────────────────────────────────────────────

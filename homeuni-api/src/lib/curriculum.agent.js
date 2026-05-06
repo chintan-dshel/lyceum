@@ -127,114 +127,152 @@ Return:
 
 // ── Assignment Generation ────────────────────────────────────────────────────
 
-export async function generateCourseAssignments(course, lessons) {
+// ── Assignment Generation (single, progressive) ──────────────────────────────
+
+const ASSIGNMENT_TYPES = {
+  1: { label: 'mid-course', coverage: 'the first half of the course' },
+  2: { label: 'end-of-course', coverage: 'the full course' },
+};
+
+export async function generateSingleAssignment(course, lessons, position) {
+  const { label, coverage } = ASSIGNMENT_TYPES[position] || ASSIGNMENT_TYPES[2];
   const lessonTitles = lessons.map(l => `${l.number}. ${l.title}`).join('\n');
+  const midpoint = Math.ceil(lessons.length / 2);
+  const coveredLessons = position === 1 ? lessons.slice(0, midpoint) : lessons;
+  const coveredTitles = coveredLessons.map(l => `${l.number}. ${l.title}`).join('\n');
 
   const result = await callClaudeJSON({
     model: MODELS.FAST,
-    system: `You are designing practice assignments for a university course.
+    system: `You are designing a single practice assignment for a university course.
 Assignments are framed as learning exercises, not gatekeeping assessments.
-Create 2 assignments: one mid-course (after lesson 5) and one end-of-course.
-Include detailed rubrics so students know exactly how their work will be evaluated.
-Return ONLY JSON.`,
+Include a detailed rubric so students know exactly how their work will be evaluated.
+Return ONLY a JSON object matching this exact schema — no extra keys, no markdown fences.`,
     messages: [
       {
         role: 'user',
-        content: `Course: ${course.title} (${course.code})
-Description: ${course.description}
-Lessons covered:
+        content: `Design the ${label} assignment for this course. It covers ${coverage}.
+
+Course: ${course.title} (${course.code})
+Description: ${course.description || ''}
+
+All lessons in the course:
 ${lessonTitles}
 
-Return:
-{
-  "assignments": [
-    {
-      "title": "Assignment title",
-      "assignment_type": "essay|short_answer|problem_set|code|project|reflection",
-      "prompt": "Full assignment prompt with clear instructions...",
-      "position": 1,
-      "rubric": [
-        {
-          "criterion": "Understanding of core concepts",
-          "description": "Demonstrates clear understanding of...",
-          "max_points": 40
-        }
-      ],
-      "max_score": 100
-    }
-  ]
-}`,
-      },
-    ],
-    maxTokens: 3000,
-  });
+Lessons this assignment covers:
+${coveredTitles}
 
-  if (!result?.assignments || !Array.isArray(result.assignments)) {
-    throw new Error(`generateCourseAssignments: expected {assignments:[...]}, got: ${JSON.stringify(result).slice(0, 200)}`);
-  }
-  return result.assignments;
+Return exactly this JSON shape:
+{
+  "title": "Mid-Course Assignment: How Banks Create Money",
+  "assignment_type": "short_answer",
+  "prompt": "This assignment covers the first five lessons. Complete all three parts. Part 1: ...",
+  "position": ${position},
+  "rubric": [
+    { "criterion": "Conceptual accuracy", "description": "Correctly applies core definitions and mechanisms from the lessons.", "max_points": 40 },
+    { "criterion": "Depth of analysis", "description": "Goes beyond recall — demonstrates understanding of why, not just what.", "max_points": 35 },
+    { "criterion": "Clarity", "description": "Arguments are clearly structured and easy to follow.", "max_points": 25 }
+  ],
+  "max_score": 100
 }
 
-// ── Exam Generation ──────────────────────────────────────────────────────────
+assignment_type must be one of: essay, short_answer, problem_set, code, project, reflection`,
+      },
+    ],
+    maxTokens: 2000,
+  });
 
-export async function generateCourseExams(course, lessons) {
-  const lessonTitles = lessons.map(l => `${l.number}. ${l.title}`).join('\n');
+  if (!result?.title || !result?.prompt) {
+    throw new Error(`generateSingleAssignment: invalid response: ${JSON.stringify(result).slice(0, 200)}`);
+  }
+  return { ...result, position };
+}
+
+// ── Exam Generation (single, progressive) ────────────────────────────────────
+
+const EXAM_TYPES = {
+  1: { label: 'midterm', exam_type: 'midterm', questionCount: 8, coverage: 'the first half of the course' },
+  2: { label: 'final',   exam_type: 'final',   questionCount: 12, coverage: 'the full course' },
+};
+
+export async function generateSingleExam(course, lessons, position) {
+  const { label, exam_type, questionCount, coverage } = EXAM_TYPES[position] || EXAM_TYPES[2];
+  const midpoint = Math.ceil(lessons.length / 2);
+  const coveredLessons = position === 1 ? lessons.slice(0, midpoint) : lessons;
+  const coveredTitles = coveredLessons.map(l => `${l.number}. ${l.title}`).join('\n');
 
   const result = await callClaudeJSON({
     model: MODELS.FAST,
-    system: `You are designing knowledge checks for a university course.
-These are framed as "Knowledge Check" exercises — not high-stakes exams.
-Create 2: a midterm (covering lessons 1-5, 8 questions) and a final (all lessons, 12 questions).
-Mix question types. For multiple choice, always include the correct answer.
-Return ONLY JSON.`,
+    system: `You are designing a knowledge check for a university course.
+Frame it as a learning tool, not a high-stakes exam.
+Mix question types: roughly 60% multiple choice, 40% short answer.
+For multiple choice, always include the correct answer in the correct_answer field.
+Return ONLY a JSON object matching the exact schema — no extra keys, no markdown fences.`,
     messages: [
       {
         role: 'user',
-        content: `Course: ${course.title} (${course.code})
-Lessons:
-${lessonTitles}
+        content: `Design the ${label} knowledge check (${questionCount} questions). It covers ${coverage}.
 
-Return:
+Course: ${course.title} (${course.code})
+
+Lessons covered:
+${coveredTitles}
+
+Return exactly this JSON shape (${questionCount} questions total):
 {
-  "exams": [
+  "title": "Midterm Knowledge Check",
+  "exam_type": "${exam_type}",
+  "instructions": "Take your time — this is here to help you identify what you know well and what to revisit.",
+  "time_limit_mins": null,
+  "max_score": 100,
+  "position": ${position},
+  "questions": [
     {
-      "title": "Midterm Knowledge Check",
-      "exam_type": "midterm",
-      "instructions": "Take your time — this is here to help you identify what you know well and what to revisit.",
-      "time_limit_mins": null,
-      "max_score": 100,
-      "position": 1,
-      "questions": [
-        {
-          "id": "q1",
-          "type": "multiple_choice",
-          "question": "Question text?",
-          "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-          "correct_answer": "A) ...",
-          "points": 4,
-          "topic": "Lesson 1 — topic"
-        },
-        {
-          "id": "q2",
-          "type": "short_answer",
-          "question": "Explain...",
-          "correct_answer": "Model answer: ...",
-          "points": 6,
-          "topic": "Lesson 2 — topic"
-        }
-      ]
+      "id": "q1",
+      "type": "multiple_choice",
+      "question": "Which of the following best describes financial intermediation?",
+      "options": ["A) The process of printing money", "B) Connecting savers with borrowers to reduce search costs", "C) Government regulation of banks", "D) Converting foreign currency"],
+      "correct_answer": "B) Connecting savers with borrowers to reduce search costs",
+      "points": 4,
+      "topic": "Lesson 1 — The Problem Banks Solve"
+    },
+    {
+      "id": "q2",
+      "type": "short_answer",
+      "question": "Explain how a bank creates money through lending. Use a specific example.",
+      "correct_answer": "When a bank makes a loan it credits the borrower's account, creating a new deposit. For example, a $10,000 loan creates $10,000 of new money in the banking system, subject to reserve requirements.",
+      "points": 8,
+      "topic": "Lesson 3 — How Banks Create Money"
     }
   ]
-}`,
+}
+
+Every question must have all fields shown above. id must be unique (q1, q2, ...).`,
       },
     ],
-    maxTokens: 3500,
+    maxTokens: 4000,
   });
 
-  if (!result?.exams || !Array.isArray(result.exams)) {
-    throw new Error(`generateCourseExams: expected {exams:[...]}, got: ${JSON.stringify(result).slice(0, 200)}`);
+  if (!result?.questions || !Array.isArray(result.questions)) {
+    throw new Error(`generateSingleExam: invalid response: ${JSON.stringify(result).slice(0, 200)}`);
   }
-  return result.exams;
+  return { ...result, position };
+}
+
+// Keep bulk exports for QA pipeline back-compat
+export async function generateCourseAssignments(course, lessons) {
+  const [a1, a2] = await Promise.all([
+    generateSingleAssignment(course, lessons, 1),
+    generateSingleAssignment(course, lessons, 2),
+  ]);
+  return [a1, a2];
+}
+
+export async function generateCourseExams(course, lessons) {
+  const [e1, e2] = await Promise.all([
+    generateSingleExam(course, lessons, 1),
+    generateSingleExam(course, lessons, 2),
+  ]);
+  return [e1, e2];
 }
 
 // ── DB Writers ───────────────────────────────────────────────────────────────

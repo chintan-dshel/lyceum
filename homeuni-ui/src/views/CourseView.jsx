@@ -1,10 +1,13 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { curriculum } from '../lib/api.js';
 import { useAssignments, useExams } from '../hooks/useAssessment.js';
 import Sidebar from '../components/Sidebar.jsx';
 import TopBar from '../components/TopBar.jsx';
 import Icon from '../components/ui/Icon.jsx';
+
+const MAX_ASSIGNMENTS = 2;
+const MAX_EXAMS = 2;
 
 export default function CourseView() {
   const { programId, courseId } = useParams();
@@ -14,11 +17,73 @@ export default function CourseView() {
   const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('lessons');
   const [loading, setLoading] = useState(true);
+  const [generatingAssignment, setGeneratingAssignment] = useState(false);
+  const [generatingExam, setGeneratingExam] = useState(false);
   const pollRef = useRef(null);
   const mountedRef = useRef(true);
+  const assignmentPollRef = useRef(null);
+  const examPollRef = useRef(null);
 
-  const { assignments } = useAssignments(courseId);
-  const { exams } = useExams(courseId);
+  const { assignments, refetch: refetchAssignments } = useAssignments(courseId);
+  const { exams, refetch: refetchExams } = useExams(courseId);
+
+  const handleGenerateNextAssignment = useCallback(async () => {
+    if (generatingAssignment || assignments.length >= MAX_ASSIGNMENTS) return;
+    setGeneratingAssignment(true);
+    try {
+      await curriculum.nextAssignment(courseId);
+      // Poll until new assignment appears
+      const poll = () => {
+        assignmentPollRef.current = setTimeout(async () => {
+          refetchAssignments();
+          // Keep polling until count increases
+          assignmentPollRef.current = null;
+        }, 4000);
+      };
+      // Simple approach: poll every 4s for up to 60s
+      let attempts = 0;
+      const prevCount = assignments.length;
+      const interval = setInterval(() => {
+        refetchAssignments();
+        attempts++;
+        if (attempts > 15) { clearInterval(interval); setGeneratingAssignment(false); }
+      }, 4000);
+      // Stop polling when count increases
+      const check = setInterval(() => {
+        if (assignments.length > prevCount || attempts > 15) {
+          clearInterval(interval);
+          clearInterval(check);
+          setGeneratingAssignment(false);
+        }
+      }, 500);
+    } catch {
+      setGeneratingAssignment(false);
+    }
+  }, [courseId, assignments.length, generatingAssignment, refetchAssignments]);
+
+  const handleGenerateNextExam = useCallback(async () => {
+    if (generatingExam || exams.length >= MAX_EXAMS) return;
+    setGeneratingExam(true);
+    try {
+      await curriculum.nextExam(courseId);
+      let attempts = 0;
+      const prevCount = exams.length;
+      const interval = setInterval(() => {
+        refetchExams();
+        attempts++;
+        if (attempts > 15) { clearInterval(interval); setGeneratingExam(false); }
+      }, 4000);
+      const check = setInterval(() => {
+        if (exams.length > prevCount || attempts > 15) {
+          clearInterval(interval);
+          clearInterval(check);
+          setGeneratingExam(false);
+        }
+      }, 500);
+    } catch {
+      setGeneratingExam(false);
+    }
+  }, [courseId, exams.length, generatingExam, refetchExams]);
 
   async function fetchCourse() {
     try {
@@ -202,9 +267,6 @@ export default function CourseView() {
               {/* Assignments */}
               {activeTab === 'assignments' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {assignments.length === 0 && (
-                    <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>No assignments yet.</div>
-                  )}
                   {assignments.map(a => (
                     <Link
                       key={a.id}
@@ -227,15 +289,25 @@ export default function CourseView() {
                       <Icon name="chevron" size={13} style={{ color: 'var(--ink-4)' }} />
                     </Link>
                   ))}
+                  {assignments.length < MAX_ASSIGNMENTS && (
+                    <button
+                      className="btn ghost"
+                      onClick={handleGenerateNextAssignment}
+                      disabled={generatingAssignment}
+                      style={{ marginTop: 8, fontSize: 12.5, alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {generatingAssignment
+                        ? <><span className="spinner" style={{ width: 11, height: 11 }} /> Generating…</>
+                        : <><Icon name="plus" size={12} /> {assignments.length === 0 ? 'Generate first assignment' : 'Generate next assignment'}</>
+                      }
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Exams */}
               {activeTab === 'exams' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {exams.length === 0 && (
-                    <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '20px 0' }}>No exams yet.</div>
-                  )}
                   {exams.map(e => (
                     <Link
                       key={e.id}
@@ -260,6 +332,19 @@ export default function CourseView() {
                       <Icon name="chevron" size={13} style={{ color: 'var(--ink-4)' }} />
                     </Link>
                   ))}
+                  {exams.length < MAX_EXAMS && (
+                    <button
+                      className="btn ghost"
+                      onClick={handleGenerateNextExam}
+                      disabled={generatingExam}
+                      style={{ marginTop: 8, fontSize: 12.5, alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {generatingExam
+                        ? <><span className="spinner" style={{ width: 11, height: 11 }} /> Generating…</>
+                        : <><Icon name="plus" size={12} /> {exams.length === 0 ? 'Generate first exam' : 'Generate next exam'}</>
+                      }
+                    </button>
+                  )}
                 </div>
               )}
             </div>

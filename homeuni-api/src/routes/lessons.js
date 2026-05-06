@@ -14,7 +14,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { runProfessorTurn } from '../lib/agents.js';
-import { generateSingleLesson } from '../lib/curriculum.agent.js';
+import { generateSingleLesson, generateSingleAssignment, generateSingleExam, writeAssignmentsToDB, writeExamsToDB } from '../lib/curriculum.agent.js';
 import { generateNextLesson } from '../lib/qa.pipeline.js';
 import { updateStreak } from '../lib/streak.service.js';
 import { gradePracticeAnswer } from '../lib/practice.agent.js';
@@ -264,6 +264,74 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
   }
 
   res.json({ ok: true, nextLesson: nextLesson ? { id: nextLesson.id, generating: nextGenerating } : null });
+
+  // Auto-generate assignments/exams based on course completion progress (background)
+  setImmediate(async () => {
+    try {
+      const { rows: allLessons } = await query(
+        'SELECT id, number, title, status FROM lessons WHERE course_id = $1 ORDER BY number',
+        [lesson.course_id]
+      );
+      const total = allLessons.length;
+      if (total === 0) return;
+
+      const completedCount = allLessons.filter(l => l.status === 'complete').length;
+      const halfpoint = Math.ceil(total / 2);
+
+      const { rows: [course] } = await query(
+        `SELECT c.*, p.id AS program_id FROM courses c
+         JOIN programs p ON p.id = c.program_id WHERE c.id = $1`,
+        [lesson.course_id]
+      );
+      if (!course) return;
+
+      const { rows: existingAssignments } = await query(
+        'SELECT position FROM assignments WHERE course_id = $1 ORDER BY position',
+        [lesson.course_id]
+      );
+      const { rows: existingExams } = await query(
+        'SELECT position FROM exams WHERE course_id = $1 ORDER BY position',
+        [lesson.course_id]
+      );
+
+      const assignmentPositions = new Set(existingAssignments.map(a => a.position));
+      const examPositions = new Set(existingExams.map(e => e.position));
+
+      // Reached halfway — generate mid-course assessment if not yet done
+      if (completedCount >= halfpoint) {
+        const toGenerate = [];
+        if (!assignmentPositions.has(1)) toGenerate.push(
+          generateSingleAssignment(course, allLessons, 1)
+            .then(a => writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] }))
+            .then(() => console.log(`[Auto] ✓ ${course.code} mid-course assignment ready`))
+        );
+        if (!examPositions.has(1)) toGenerate.push(
+          generateSingleExam(course, allLessons, 1)
+            .then(e => writeExamsToDB({ courseId: lesson.course_id, exams: [e] }))
+            .then(() => console.log(`[Auto] ✓ ${course.code} midterm ready`))
+        );
+        await Promise.all(toGenerate);
+      }
+
+      // Completed all lessons — generate end-of-course assessment
+      if (completedCount === total) {
+        const toGenerate = [];
+        if (!assignmentPositions.has(2)) toGenerate.push(
+          generateSingleAssignment(course, allLessons, 2)
+            .then(a => writeAssignmentsToDB({ courseId: lesson.course_id, assignments: [a] }))
+            .then(() => console.log(`[Auto] ✓ ${course.code} final assignment ready`))
+        );
+        if (!examPositions.has(2)) toGenerate.push(
+          generateSingleExam(course, allLessons, 2)
+            .then(e => writeExamsToDB({ courseId: lesson.course_id, exams: [e] }))
+            .then(() => console.log(`[Auto] ✓ ${course.code} final exam ready`))
+        );
+        await Promise.all(toGenerate);
+      }
+    } catch (err) {
+      console.error('[Auto] Assessment generation error:', err.message);
+    }
+  });
 }));
 
 // ── Professor Chat ───────────────────────────────────────────────────────────

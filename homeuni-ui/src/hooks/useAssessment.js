@@ -1,19 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { assignments, exams } from '../lib/api.js';
 
 export function useAssignments(courseId) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     if (!courseId) return;
     assignments.list(courseId)
-      .then(({ assignments: list }) => setData(list))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(({ assignments: list }) => { if (mountedRef.current) setData(list); })
+      .catch(() => {});
   }, [courseId]);
 
-  return { assignments: data, loading };
+  useEffect(() => {
+    mountedRef.current = true;
+    if (!courseId) return;
+    assignments.list(courseId)
+      .then(({ assignments: list }) => { if (mountedRef.current) setData(list); })
+      .catch(() => {})
+      .finally(() => { if (mountedRef.current) setLoading(false); });
+    return () => { mountedRef.current = false; };
+  }, [courseId]);
+
+  return { assignments: data, loading, refetch };
 }
 
 export function useAssignment(assignmentId) {
@@ -56,16 +66,26 @@ export function useAssignment(assignmentId) {
 export function useExams(courseId) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     if (!courseId) return;
     exams.list(courseId)
-      .then(({ exams: list }) => setData(list))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(({ exams: list }) => { if (mountedRef.current) setData(list); })
+      .catch(() => {});
   }, [courseId]);
 
-  return { exams: data, loading };
+  useEffect(() => {
+    mountedRef.current = true;
+    if (!courseId) return;
+    exams.list(courseId)
+      .then(({ exams: list }) => { if (mountedRef.current) setData(list); })
+      .catch(() => {})
+      .finally(() => { if (mountedRef.current) setLoading(false); });
+    return () => { mountedRef.current = false; };
+  }, [courseId]);
+
+  return { exams: data, loading, refetch };
 }
 
 export function useExam(examId) {
