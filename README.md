@@ -10,6 +10,36 @@ Lyceum generates a personalised degree programme — complete curriculum, lectur
 
 ---
 
+## MVP Status — May 2026
+
+Lyceum is deployed on Railway and closed as an MVP. This section documents what is live, what is built but deferred, and what is planned for future phases.
+
+### Live and working
+- Onboarding — advisor agent, programme proposal, learner profiling
+- Curriculum generation — 4-phase QA pipeline (Clarify → Spec → Review → Generate)
+- Lessons — lazy generation, professor Q&A with SSE streaming, persistent learner memory
+- Practice problems — spec-time generation, Haiku grader
+- Assignments + exams — progressively unlocked, Assessor agent with rubric + extended thinking
+- Difficulty detection — passive signal aggregation, advisor nudges
+- Study groups — 4 AI classmates with distinct personas
+- Knowledge graph — course and lesson nodes, prerequisite edges, click to navigate
+- Transcript — live academic record with semester GPA and course grades, browser PDF download
+- Graduation + certificate — eligibility check, unique UUID verification code, public verify endpoint
+- Daily streak tracking
+- Per-user monthly caps — $2 spending / 50 LLM requests (from `agent_traces`), configurable via env vars
+- Registration gated by `REGISTRATION_OPEN=true` env var (currently open)
+
+### Deferred — built but removed from UI
+- **Flashcards** — SM-2 spaced repetition fully implemented (backend routes intact, database schema in migration 009, `FlashcardView.jsx` preserved). Removed from UI in May 2026 due to unstable generation timing. Revisit when content pipeline is more predictable.
+- **Voice lectures** — ElevenLabs TTS + Whisper STT planned. `lectures.js` returns 501. `useVoice` hook scaffolded. Phase 2.
+
+### Known gaps
+- Email streak reminders — Nodemailer is wired; SMTP config required (works locally, not configured on Railway)
+- Per-user cap is in-process only; spans correctly across restarts via `agent_traces` DB reads, but would need Redis/DB advisory lock for true multi-instance enforcement
+- Test suite references flashcard routes that are no longer accessible from the UI; backend tests still pass, integration tests may need update if flashcard routes are removed
+
+---
+
 ## What it does
 
 ### Onboarding → Advisor Agent
@@ -172,7 +202,7 @@ Testing          Vitest (unit + integration + E2E)
 Containers       Docker Compose (postgres + redis + api + ui)
 ```
 
-No ORM. Raw SQL with parameterised queries throughout. The schema is in 11 versioned migration files.
+No ORM. Raw SQL with parameterised queries throughout. The schema is in 17 versioned migration files.
 
 ---
 
@@ -257,7 +287,7 @@ lyceum/
 │   └── package.json
 ├── homeuni-ui/
 │   └── src/
-│       ├── views/           15 views (Dashboard → Lesson → Flashcard → Certificate)
+│       ├── views/           15 views (Dashboard → Lesson → Transcript → Certificate)
 │       ├── components/      Sidebar · TopBar · ProfessorPanel · ProgressRing + ui/
 │       ├── hooks/           useAuth · useLesson · useProgram · useVoice + 3 more
 │       └── lib/api.js       typed fetch wrapper, all endpoints
@@ -277,10 +307,18 @@ The hardest problem wasn't the AI integration. It was the same problem as any no
 
 ## Roadmap
 
-- [ ] Cohorts — 12 learners through the same programme simultaneously, shared study sessions
-- [ ] Mobile — React Native client, push notifications for due cards and streak reminders
-- [ ] Knowledge Graph V2 — lesson-level nodes with completion overlay
-- [ ] ElevenLabs voice — real TTS for professor responses (Web Speech API in place for V1)
+**Phase 2 — Voice + Whiteboard**
+- [ ] ElevenLabs TTS for professor responses — stream audio alongside text
+- [ ] Whisper STT — speak questions instead of typing
+- [ ] tldraw whiteboard — live diagram board during lessons
+
+**Phase 3 — Scale**
+- [ ] Cohorts — shared study sessions across multiple learners on the same programme
+- [ ] Mobile — React Native client, push notifications for streak and due content
+- [ ] Knowledge Graph V2 — lesson-level nodes with completion colour overlay
+
+**Deferred features to revisit**
+- [ ] Flashcards — restore to UI once generation timing is stable; SM-2 and all backend routes are intact
 
 ---
 
