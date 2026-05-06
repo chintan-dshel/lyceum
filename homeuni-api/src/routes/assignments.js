@@ -17,6 +17,7 @@ import { recomputeCourseGrade } from '../lib/grade.service.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { injectionDetection } from '../middleware/injectionDetection.js';
 import { piiAudit } from '../middleware/piiAudit.js';
+import { userCap } from '../middleware/userCap.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -58,7 +59,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json({ assignment });
 }));
 
-router.post('/:id/submit', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
+router.post('/:id/submit', rateLimit, userCap, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { content_text } = req.body;
   if (!content_text?.trim()) {
     return res.status(400).json({ error: 'Submission content is required' });

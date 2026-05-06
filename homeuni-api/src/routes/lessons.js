@@ -31,6 +31,7 @@ import {
 import { rateLimit } from '../middleware/rateLimit.js';
 import { injectionDetection } from '../middleware/injectionDetection.js';
 import { piiAudit } from '../middleware/piiAudit.js';
+import { userCap, checkUserCap } from '../middleware/userCap.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -123,6 +124,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
     if (failedLessons.has(lesson.id)) {
       generationFailed = true;
     } else if (!generatingLessons.has(lesson.id)) {
+      const cap = await checkUserCap(req.user.id);
+      if (!cap.allowed) {
+        return res.json({ lesson, navigation: { prev, next }, generating: false, generationFailed: false, capReached: true });
+      }
       generatingLessons.add(lesson.id);
       setImmediate(async () => {
         try {
@@ -361,7 +366,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
 
 // ── Professor Chat ───────────────────────────────────────────────────────────
 
-router.post('/:id/professor/chat', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
+router.post('/:id/professor/chat', rateLimit, userCap, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { message, stream = false } = req.body;
   if (!message) return res.status(400).json({ error: 'message is required' });
 
@@ -532,7 +537,7 @@ router.get('/:id/practice', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/lessons/:id/practice/:n — submit answer to problem n
-router.post('/:id/practice/:n', rateLimit, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
+router.post('/:id/practice/:n', rateLimit, userCap, injectionDetection, piiAudit, asyncHandler(async (req, res) => {
   const { answer } = req.body;
   if (!answer?.trim()) return res.status(400).json({ error: 'answer is required' });
 

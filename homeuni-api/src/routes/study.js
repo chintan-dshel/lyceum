@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/errors.js';
 import { query } from '../db/pool.js';
 import { getClassmateReply, CLASSMATES } from '../lib/study.agent.js';
 import { updateStreak } from '../lib/streak.service.js';
+import { userCap } from '../middleware/userCap.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -51,7 +52,7 @@ router.get('/:programId/sessions/:sessionId', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/study/:programId/sessions/:sessionId/message — send + get AI reply
-router.post('/:programId/sessions/:sessionId/message', asyncHandler(async (req, res) => {
+router.post('/:programId/sessions/:sessionId/message', userCap, asyncHandler(async (req, res) => {
   const { sessionId, programId } = req.params;
   const { content, courseTitle } = req.body;
 

@@ -30,6 +30,7 @@ import {
   MAX_ASSIGNMENTS, MAX_EXAMS,
   generatingAssignments, generatingExams,
 } from '../lib/assessment.state.js';
+import { userCap, checkUserCap } from '../middleware/userCap.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -111,6 +112,8 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
   // Trigger generation on first open, or retry if a previous pipeline run errored
   const needsGeneration = stubsAbsent || course.qa_status === 'error';
   if (needsGeneration && !generatingCourses.has(course.id) && !qaGenerating) {
+    const cap = await checkUserCap(req.user.id);
+    if (cap.allowed) {
     generatingCourses.add(course.id);
     generating = true;
 
@@ -169,6 +172,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
         }
       });
     }
+    } // if (cap.allowed)
   } else if (needsGeneration && generatingCourses.has(course.id)) {
     generating = true;
   }
@@ -186,7 +190,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
 // Each endpoint generates ONE item (the next in sequence) and returns immediately.
 // The client polls the assignments/exams list to detect when it appears.
 
-router.post('/course/:courseId/next-assignment', asyncHandler(async (req, res) => {
+router.post('/course/:courseId/next-assignment', userCap, asyncHandler(async (req, res) => {
   const { rows: [course] } = await query(
     `SELECT c.*, p.user_id FROM courses c
      JOIN programs p ON p.id = c.program_id
@@ -225,7 +229,7 @@ router.post('/course/:courseId/next-assignment', asyncHandler(async (req, res) =
   });
 }));
 
-router.post('/course/:courseId/next-exam', asyncHandler(async (req, res) => {
+router.post('/course/:courseId/next-exam', userCap, asyncHandler(async (req, res) => {
   const { rows: [course] } = await query(
     `SELECT c.*, p.user_id FROM courses c
      JOIN programs p ON p.id = c.program_id
