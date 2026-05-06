@@ -142,7 +142,7 @@ export default function TranscriptView() {
               <div className="card" style={{ padding: 20, textAlign: 'center' }}>
                 <div className="kicker">Cumulative GPA</div>
                 <div style={{ fontFamily: 'var(--f-display)', fontSize: 56, fontWeight: 600, letterSpacing: '-0.04em', lineHeight: 1, marginTop: 8 }}>
-                  {p?.gpa > 0 ? p.gpa.toFixed(2) : '—'}
+                  {p?.gpa > 0 ? parseFloat(p.gpa).toFixed(2) : '—'}
                 </div>
               </div>
 

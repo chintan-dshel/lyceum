@@ -171,7 +171,7 @@ function ProgramCard({ program, onDelete, navigate }) {
         {program.gpa > 0 && (
           <div>
             <div className="kicker" style={{ fontSize: 9.5, marginBottom: 2 }}>GPA</div>
-            <div style={{ fontFamily: 'var(--f-display)', fontWeight: 600, fontSize: 16, color: 'var(--ink)' }}>{program.gpa.toFixed(2)}</div>
+            <div style={{ fontFamily: 'var(--f-display)', fontWeight: 600, fontSize: 16, color: 'var(--ink)' }}>{parseFloat(program.gpa).toFixed(2)}</div>
           </div>
         )}
         <div>
