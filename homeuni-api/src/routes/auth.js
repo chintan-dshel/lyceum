@@ -8,6 +8,10 @@ const router = Router();
 
 // POST /api/auth/register
 router.post('/register', asyncHandler(async (req, res) => {
+  if (process.env.REGISTRATION_OPEN !== 'true') {
+    return res.status(403).json({ error: 'Registration is currently closed.' });
+  }
+
   const { email, password, full_name } = req.body;
 
   if (!email || !password || !full_name) {
