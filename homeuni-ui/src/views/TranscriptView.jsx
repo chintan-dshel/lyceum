@@ -101,7 +101,7 @@ export default function TranscriptView() {
           crumb="ACADEMIC RECORD"
           crumbHref="/dashboard"
           title="Transcript"
-          actions={<button className="btn"><Icon name="upload" size={13} /> Download PDF</button>}
+          actions={<button className="btn no-print" onClick={() => window.print()}><Icon name="upload" size={13} /> Download PDF</button>}
         />
 
         <div style={{ overflow: 'auto', flex: 1 }}>
@@ -138,7 +138,7 @@ export default function TranscriptView() {
             </div>
 
             {/* Right aside */}
-            <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
+            <aside className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
               <div className="card" style={{ padding: 20, textAlign: 'center' }}>
                 <div className="kicker">Cumulative GPA</div>
                 <div style={{ fontFamily: 'var(--f-display)', fontSize: 56, fontWeight: 600, letterSpacing: '-0.04em', lineHeight: 1, marginTop: 8 }}>

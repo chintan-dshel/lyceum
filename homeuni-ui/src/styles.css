@@ -368,3 +368,13 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 *::-webkit-scrollbar { width: 5px; height: 5px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+
+/* ── Print (transcript PDF) ──────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .sidebar  { display: none !important; }
+  .topbar   { display: none !important; }
+  .app-shell, .main-content { display: block !important; overflow: visible !important; }
+  body { background: white; color: black; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}
