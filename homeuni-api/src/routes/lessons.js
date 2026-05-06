@@ -51,7 +51,7 @@ router.get('/course/:courseId', asyncHandler(async (req, res) => {
   if (!course.length) return res.status(404).json({ error: 'Course not found' });
 
   const { rows: lessons } = await query(
-    `SELECT l.id, l.number, l.title, l.summary, l.lesson_type, l.estimated_minutes,
+    `SELECT l.id, l.number, l.title, l.summary, l.lesson_type, l.estimated_minutes, l.status,
             lv.visit_count, lv.time_spent_secs, lv.scroll_depth
      FROM lessons l
      LEFT JOIN lesson_visits lv ON lv.lesson_id = l.id AND lv.user_id = $2

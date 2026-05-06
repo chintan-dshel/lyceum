@@ -30,6 +30,7 @@ export function useLesson(lessonId) {
   useEffect(() => {
     if (!lessonId) return;
     mountedRef.current = true;
+    setLesson(null); // clear stale lesson so isComplete doesn't bleed across navigation
     setLoading(true);
     setGenerating(false);
     setGenerationFailed(false);
