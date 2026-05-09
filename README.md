@@ -333,3 +333,9 @@ The hardest problem wasn't the AI integration. It was the same problem as any no
 ---
 
 *Built with [Claude](https://claude.ai) · Powered by [Anthropic](https://anthropic.com)*
+
+---
+
+## See also
+
+Working-method showcase: <https://huggingface.co/spaces/cdshelat/second-brain> — the QA pipeline, multi-rubric reviewer, and learner memory patterns from this project are among the 25 curated entries; the chat answers questions about how they work.
